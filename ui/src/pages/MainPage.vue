@@ -168,7 +168,7 @@ const gridOptions: GridOptions<Result> = {
 
 <template>
   <PlBlockPage>
-    <template #title>DriverMap™ AIR Profiling</template>
+    <template #title>DriverMap™ AIR Clonotyping</template>
     <template #append>
       <PlBtnGhost @click.stop="() => (data.settingsOpen = true)">
         Settings

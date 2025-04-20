@@ -5,6 +5,7 @@ export type BlockArgs = {
   input?: PlRef;
   preset?: string;
   limitInput?: number;
+  chains: string[];
 };
 
 export type UiState = {
@@ -18,7 +19,9 @@ export const ProgressPattern
 
 export const model = BlockModel.create()
 
-  .withArgs<BlockArgs>({})
+  .withArgs<BlockArgs>({
+    chains: ['IG', 'TCRAB', 'TCRGD'],
+  })
   .withUiState<UiState>({
     title: 'DriverMap™ AIR Profiling',
   })
@@ -82,7 +85,7 @@ export const model = BlockModel.create()
 
   .sections((_) => [{ type: 'link', href: '/', label: 'Main' }])
 
-  .title((ctx) => ctx.uiState.title ?? 'DriverMap™ AIR Profiling')
+  .title((ctx) => ctx.uiState.title ?? 'DriverMap™ AIR Clonotyping')
 
   .done();
 
