@@ -1,0 +1,132 @@
+// mixcr analyze
+
+self := import("@platforma-sdk/workflow-tengo:tpl")
+smart := import("@platforma-sdk/workflow-tengo:smart")
+pConstants := import("@platforma-sdk/workflow-tengo:pframes.constants")
+ll := import("@platforma-sdk/workflow-tengo:ll")
+exec := import("@platforma-sdk/workflow-tengo:exec")
+assets := import("@platforma-sdk/workflow-tengo:assets")
+pcolumn := import("@platforma-sdk/workflow-tengo:pframes.pcolumn")
+times := import("times")
+maps := import("@platforma-sdk/workflow-tengo:maps")
+
+json := import("json")
+
+self.defineOutputs("qc", "reports", "logs", "clns")
+
+mixcrSw := assets.importSoftware("@platforma-open/milaboratories.software-mixcr:main")
+
+progressPrefix := "[==PROGRESS==]"
+
+self.body(func(inputs) {
+	inputData := inputs.__value__
+	inputDataMeta := inputData.getDataAsJson()
+	aggregationAxesNames := inputs[pConstants.AGGREGATION_AXES_NAMES_FIELD_NAME]
+
+	preset := inputs.preset
+	limitInput := inputs.limitInput
+	fileExtension := inputs.fileExtension
+
+	
+
+	clnsFileName := "result.clns"
+	
+	mixcrCmdBuilder := exec.builder().
+		printErrStreamToStdout().
+		env("MI_PROGRESS_PREFIX", progressPrefix).
+		software(mixcrSw).
+		secret("MI_LICENSE", "MI_LICENSE").
+		arg("analyze").
+		arg(preset)
+
+	if !is_undefined(limitInput) {
+		mixcrCmdBuilder.arg("--limit-input").arg(string(limitInput))
+	}
+
+	inputMap := inputData.inputs()
+	if inputDataMeta.keyLength == 0 {
+		ll.assert(aggregationAxesNames == [], "unexpected aggregation axes names")
+		// Assuming only one key "[]" exists here, no need for sorted iteration
+		inputFile := inputMap["[]"]
+		ll.assert(!is_undefined(inputFile), "unexpected agg group structure")
+		inputFileName := "input." + fileExtension
+		mixcrCmdBuilder.addFile(inputFileName, inputFile)
+		mixcrCmdBuilder.arg(inputFileName)
+	} else if inputDataMeta.keyLength == 1 {
+		ll.assert(aggregationAxesNames == ["pl7.app/sequencing/readIndex"], "unexpected aggregation axes names")
+		for sKey in maps.getKeys(inputMap) {
+			inputFile := inputMap[sKey]
+			key := json.decode(sKey)
+			if len(key) != 1 {
+				ll.panic("malformed key: %v", sKey)
+			}
+			r := key[0]
+			if (r[0] != 'R' && r[0] != "I") || (r[1] != '1' && r[1] != '2') || len(r) != 2 {
+				ll.panic("malformed read index: %v", r)
+			}
+			mixcrCmdBuilder.addFile("input_" + r + "." + fileExtension, inputFile)
+		}
+		mixcrCmdBuilder.arg("input_{{R}}." + fileExtension)
+	} else if inputDataMeta.keyLength == 2 {
+		ll.assert(aggregationAxesNames == ["pl7.app/sequencing/lane", "pl7.app/sequencing/readIndex"], "unexpected aggregation axes names")
+		for sKey in maps.getKeys(inputMap) {
+			inputFile := inputMap[sKey]
+			key := json.decode(sKey)
+			if len(key) != 2 {
+				ll.panic("malformed key: %v", sKey)
+			}
+			lane := key[0]
+			r := key[1]
+			if (r[0] != 'R' && r[0] != "I") || (r[1] != '1' && r[1] != '2') || len(r) != 2 {
+				ll.panic("malformed read index: %v", r)
+			}
+			if is_undefined(int(lane)) {
+				ll.panic("malformed lane: %v", lane)
+			}
+			mixcrCmdBuilder.addFile("input_L" + lane + "_" + r + "." + fileExtension, inputFile)
+		}
+		mixcrCmdBuilder.arg("input_L{{n}}_{{R}}." + fileExtension)
+	} else {
+		ll.panic("too many axes / not supported")
+	}
+
+	mixcrCmdBuilder.arg("result")
+	mixcrCmdBuilder.saveFile("result.qc.json")
+	mixcrCmdBuilder.saveFile(clnsFileName)
+
+	reports := [
+		{
+			id: "align",
+			fileJson: "result.align.report.json",
+			fileTxt: "result.align.report.txt"
+		},
+		{
+			id: "assemble",
+			fileJson: "result.assemble.report.json",
+			fileTxt: "result.assemble.report.txt"
+		}
+	]
+
+	for report in reports {
+		mixcrCmdBuilder.saveFile(report.fileJson)
+		mixcrCmdBuilder.saveFile(report.fileTxt)
+	}
+
+	mixcrCmdBuilder = mixcrCmdBuilder.cache(48 * times.hour)
+	mixcrCmd := mixcrCmdBuilder.run()
+
+	// collecting results
+
+	reportsMap := pcolumn.resourceMapBuilder( /* keyLength */ 2 )
+	for report in reports {
+		reportsMap.add([report.id, "json"], mixcrCmd.getFile(report.fileJson))
+		reportsMap.add([report.id, "txt"], mixcrCmd.getFile(report.fileTxt))
+	}
+
+	return {
+		qc: mixcrCmd.getFile("result.qc.json"),
+		logs: mixcrCmd.getStdoutStream(),
+		reports: reportsMap.build(),
+		clns: mixcrCmd.getFile(clnsFileName)
+	}
+})

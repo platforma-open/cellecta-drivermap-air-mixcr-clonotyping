@@ -1,0 +1,50 @@
+{
+  "name": "@platforma-open/cellecta.drivermap-mixcr-clonotyping",
+  "version": "2.1.10",
+  "scripts": {
+    "build": "rm -rf block-pack/* && block-tools pack",
+    "mark-stable": "block-tools mark-stable -r 's3://milab-euce1-prod-pkgs-s3-block-registry/pub/releases/?region=eu-central-1'",
+    "prepublishOnly": "block-tools pack && block-tools publish -r 's3://milab-euce1-prod-pkgs-s3-block-registry/pub/releases/?region=eu-central-1'"
+  },
+  "files": [
+    "index.d.ts",
+    "index.js"
+  ],
+  "dependencies": {
+    "@platforma-open/cellecta.drivermap-mixcr-clonotyping.workflow": "workspace:*",
+    "@platforma-open/cellecta.drivermap-mixcr-clonotyping.model": "workspace:*",
+    "@platforma-open/cellecta.drivermap-mixcr-clonotyping.ui": "workspace:*",
+    "@platforma-sdk/block-tools": "catalog:"
+  },
+  "block": {
+    "components": {
+      "workflow": "@platforma-open/cellecta.drivermap-mixcr-clonotyping.workflow/dist/tengo/tpl/main.plj.gz",
+      "model": "@platforma-open/cellecta.drivermap-mixcr-clonotyping.model/dist/model.json",
+      "ui": "@platforma-open/cellecta.drivermap-mixcr-clonotyping.ui/dist"
+    },
+    "meta": {
+      "title": "Cellecta DriverMap™ AIR Profiling",
+      "logo": "file:../logos/block-logo.png",
+      "url": "https://github.com/platforma-open/mixcr-cellecta-clonotyping",
+      "docs": "https://github.com/platforma-open/mixcr-cellecta-clonotyping/docs",
+      "support": "mailto:support@milaboratories.com",
+      "description": "Clonotyping analysis of TCR and BCR data generated with Cellecta DriverMap™ AIR TCR-BCR Profiling Kit v2.",
+      "longDescription": "file:../docs/description.md",
+      "changelog": "file:../CHANGELOG.md",
+      "tags": [
+        "airr",
+        "vdj",
+        "upstream"
+      ],
+      "organization": {
+        "name": "Cellecta Inc",
+        "url": "https://cellecta.com/",
+        "logo": "file:../logos/organization-logo.png"
+      }
+    }
+  },
+  "devDependencies": {
+    "@platforma-sdk/block-tools": "catalog:"
+  },
+  "packageManager": "pnpm@9.12.0"
+}

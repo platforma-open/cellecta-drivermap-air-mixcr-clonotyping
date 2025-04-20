@@ -1,0 +1,42 @@
+{
+    "vitest.disableWorkspaceWarning": true,
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint",
+    "[typescript]": {
+        "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    },
+    "[vue]": {
+        "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    },
+    "cSpell.words": [
+        "clonotyping",
+        "datasource",
+        "pframe",
+        "prerun",
+        "clonotype",
+        "mixcr",
+        "clns",
+        "ptransform",
+        "isotype"
+    ],
+    "editor.codeActionsOnSave": {
+        "source.fixAll.eslint": "always"
+    },
+    "eslint.enable": true,
+    "eslint.format.enable": true,
+    "files.exclude": {
+        "**/.npmrc": true,
+        "**/*.tgz": true,
+        "**/block-pack": true,
+        "**/dist": true,
+        "**/index.d.ts": true,
+        "**/index.js": true,
+        "**/node_modules": true,
+        "**/pnpm-lock.yaml": true,
+        "**/tsconfig.app.json": true,
+        "**/tsconfig.json": true,
+        "**/tsconfig.node.json": true,
+        "**/vite.config.mts": true,
+        "**/vite.config.ts": true,
+        "**/workflow/dev": true
+    },
+}

@@ -1,0 +1,26 @@
+{
+  "name": "@platforma-open/cellecta.drivermap-mixcr-clonotyping.workflow",
+  "version": "1.5.1",
+  "type": "module",
+  "description": "Block Workflow",
+  "scripts": {
+    "build": "rm -rf dist && pl-tengo check && pl-tengo build",
+    "test": "vitest",
+    "format": "/usr/bin/env emacs --script ./format.el"
+  },
+  "dependencies": {
+    "@platforma-open/milaboratories.mixcr-clonotyping-2.hash-column": "workspace:*",
+    "@platforma-open/cellecta.drivermap-mixcr-clonotyping.vbc-filtering": "workspace:*",
+    "@platforma-open/cellecta.drivermap-mixcr-clonotyping.vbc-normalization": "workspace:*"
+  },
+  "devDependencies": {
+    "@platforma-sdk/tengo-builder": "catalog:",
+    "@platforma-sdk/workflow-tengo": "catalog:",
+    "@platforma-open/milaboratories.software-small-binaries": "catalog:",
+    "@platforma-open/milaboratories.software-mixcr": "catalog:",
+    "@platforma-open/milaboratories.software-ptransform": "catalog:",
+    "@milaboratories/software-pframes-conv": "catalog:",
+    "@platforma-sdk/test": "catalog:",
+    "vitest": "catalog:"
+  }
+}

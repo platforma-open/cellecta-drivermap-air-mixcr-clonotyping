@@ -1,0 +1,79 @@
+ll := import("@platforma-sdk/workflow-tengo:ll")
+self := import("@platforma-sdk/workflow-tengo:tpl.light")
+pConstants := import("@platforma-sdk/workflow-tengo:pframes.constants")
+smart := import("@platforma-sdk/workflow-tengo:smart")
+assets := import("@platforma-sdk/workflow-tengo:assets")
+exec := import("@platforma-sdk/workflow-tengo:exec")
+
+json := import("json")
+
+self.defineOutputs(["tsv"])
+
+mixcrSw := assets.importSoftware("@platforma-open/milaboratories.software-mixcr:low-memory")
+ptransformSw := assets.importSoftware("@platforma-open/milaboratories.software-ptransform:main")
+hashColumnSw := assets.importSoftware("@platforma-open/milaboratories.mixcr-clonotyping-2.hash-column:main")
+
+self.body(func(inputs) {
+	clnsFile := inputs.__value__
+
+	chains := inputs.chains
+	exportArgs := inputs.exportArgs
+	keyColumns := inputs.keyColumns
+
+
+	// Exporting clones from clns file
+	mixcrCmdBuilder := exec.builder().
+		inMediumQueue().
+		printErrStreamToStdout().
+		software(mixcrSw).
+		secret("MI_LICENSE", "MI_LICENSE").
+		arg("exportClones").
+		arg("--dont-split-files").
+		arg("--drop-default-fields").
+		arg("--reset-export-clone-table-splitting").
+		arg("--export-productive-clones-only").
+		arg("--chains").arg(chains)
+
+
+	for argGrp in exportArgs {
+		for arg in argGrp {
+			mixcrCmdBuilder.arg(arg)
+		}
+	}
+
+	// Add cloneId and MIBC tags to output
+	mixcrCmdBuilder.arg("-cloneId")
+	mixcrCmdBuilder.arg("-tags").arg("Molecule")
+
+	mixcrCmd := mixcrCmdBuilder.
+		arg("clones.clns").
+		addFile("clones.clns", clnsFile).
+		arg("clones.tsv").
+		saveFile("clones.tsv").
+		run()
+	
+
+	unprocessedTsv := mixcrCmd.getFile("clones.tsv")
+
+	
+	hashCmdBuilder := exec.builder().
+		printErrStreamToStdout().
+		software(hashColumnSw).
+		arg("--input-table").arg("input.tsv").
+		addFile("input.tsv", unprocessedTsv).
+		arg("--output-table").arg("output.tsv").
+		arg("--calculate")
+
+	for col in keyColumns {
+		hashCmdBuilder.arg(col)
+	}
+	hashCmdBuilder.arg("clonotypeKey")
+
+	hashCmd := hashCmdBuilder.
+		saveFile("output.tsv").
+		run()
+
+	return {
+		tsv: hashCmd.getFile("output.tsv")
+	}
+})

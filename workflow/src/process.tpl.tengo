@@ -1,0 +1,370 @@
+// process dataset
+
+json := import("json")
+text := import("text")
+
+
+self := import("@platforma-sdk/workflow-tengo:tpl")
+
+ll := import("@platforma-sdk/workflow-tengo:ll")
+assets := import("@platforma-sdk/workflow-tengo:assets")
+pframes := import("@platforma-sdk/workflow-tengo:pframes")
+smart := import("@platforma-sdk/workflow-tengo:smart")
+slices := import("@platforma-sdk/workflow-tengo:slices")
+maps := import("@platforma-sdk/workflow-tengo:maps")
+file := import("@platforma-sdk/workflow-tengo:file")
+llPFrames := import("@platforma-sdk/workflow-tengo:pframes.ll")
+pSpec := import("@platforma-sdk/workflow-tengo:pframes.spec")
+pUtil := import("@platforma-sdk/workflow-tengo:pframes.util")
+pConstants := import("@platforma-sdk/workflow-tengo:pframes.constants")
+
+/**
+ * Run `mixcr analyze` to produce clns files.
+ */
+mixcrAnalyzeTpl := assets.importTemplate(":mixcr-analyze")
+
+/**
+ * Calculate export parameters for `mixcr exportClones` and 
+ * column specs to import from mixcr tsv files.
+*/
+getExports := import(":get-export-params")
+
+/**
+ * Run `mixcr exportClones` and produce tsv files with clonotypes.
+ */
+mixcrExportTpl := assets.importTemplate(":mixcr-export")
+
+/**
+ * Run `vbc processing scripts` and produce tsv files with filtered clones and normalized abundances.
+ */
+vbcProcessingTpl := assets.importTemplate(":vbc-processing")
+
+/**
+ * Aggregate clonotypes across all samples by clone key.
+ */
+aggClonesTpl := assets.importTemplate(":agg-clones")
+
+/**
+ * Chains conventions.
+ */
+chainInfos := {
+	"IGHeavy": { mixcrFilter: "IGH", name: "IG Heavy", shortName: "Heavy" },
+	"IGLight": { mixcrFilter: "IGK,IGL", name: "IG Light", shortName: "Light" },
+	"TCRAlpha": { mixcrFilter: "TRA", name: "TCR Alpha", shortName: "Alpha" },
+	"TCRBeta": { mixcrFilter: "TRB", name: "TCR Beta", shortName: "Beta" },
+	"TCRGamma": { mixcrFilter: "TRD", name: "TCR Gamma", shortName: "Gamma" },
+	"TCRDelta": { mixcrFilter: "TRG", name: "TCR Delta", shortName: "Delta" }
+}
+
+/**
+ * Chain with higher diversity go first.
+ */
+receptorInfos := {
+	"IG": { chains: ["IGHeavy", "IGLight"], name: "IG" },
+	"TCRAB": { chains: ["TCRBeta", "TCRAlpha"], name: "TCR Alpha/Beta" }, // TODO αβ ?
+	"TCRGD": { chains: ["TCRDelta", "TCRGamma"], name: "TCR Gamma/Delta" } // TODO γδ ?
+}
+
+/**
+ * Wait for inputs to be locked and ready.
+ */
+self.awaitState("InputsLocked")
+self.awaitState("inputSpec", "ResourceReady")
+
+/**
+ * Process the dataset.
+ */
+self.body(func(inputs) {
+
+	inputSpec := inputs.inputSpec
+	blockId := inputs.blockId
+	preset := inputs.preset
+	receptorsOrChains := inputs.receptorsOrChains
+
+	// input file extension (fasta, fastq, etc)
+	fileExtension := inputSpec.domain["pl7.app/fileExtension"]
+
+
+	/***********************************************************/
+	/****************** Step 1: run mixcr analyze **************/
+	/***********************************************************/
+
+	// Outputs to be produced by mixcr analyze.
+	targetOutputs := [
+		/////////////////////// Qc ///////////////////////
+		{
+			type: "Resource",
+			spec: {
+				kind: "PColumn",
+				valueType: "File",
+				name: "mixcr.com/qc",
+				domain: {
+					"pl7.app/vdj/clonotypingRunId": blockId
+				}
+			},
+			name: "qc"
+		},
+		/////////////////////// Logs ///////////////////////
+		{
+			type: "Resource",
+			spec: {
+				kind: "PColumn",
+				name: "pl7.app/log",
+				domain: {
+					"pl7.app/vdj/clonotypingRunId": blockId
+				},
+				valueType: "Log"
+			},
+			name: "logs"
+		},
+		/////////////////////// Reports ///////////////////////
+		{
+			type: "ResourceMap",
+			name: "reports",
+			spec: {
+				kind: "PColumn",
+				name: "mixcr.com/report",
+				domain: {
+					"pl7.app/vdj/clonotypingRunId": blockId
+				},
+				valueType: "File",
+				axesSpec: [ {
+					type: "String",
+					name: "mixcr.com/report/source",
+					annotations: {
+						"pl7.app/label": "Source MiXCR stage"
+					}
+				}, {
+					type: "String",
+					name: "mixcr.com/report/format",
+					annotations: {
+						"pl7.app/label": "Report format"
+					},
+					domain: {
+						"pl7.app/dense": string(json.encode(["json", "txt"]))
+					}
+				} ]
+			}
+		},
+		/////////////////////// Clns ///////////////////////
+		{
+			type: "Resource",
+			spec: {
+				kind: "PColumn",
+				name: "mixcr.com/clns",
+				domain: {
+					"pl7.app/vdj/clonotypingRunId": blockId
+				},
+				annotations: {
+					"mixcr.com/assemblingFeature": "CDR3", // TODO: add assembling feature
+					"pl7.app/label": "MiXCR Clonesets"
+				},
+				valueType: "File"
+			},
+			name: "clns"
+		} ]
+
+	// Run mixcr analyze on input dataset p-column.
+	mixcrResults := pframes.processColumn(
+		{ spec: inputSpec, data: inputs.inputData },
+		mixcrAnalyzeTpl,
+		targetOutputs,
+		{
+			aggregate: [{
+				name: "pl7.app/sequencing/lane",
+				optional: true
+			}, {
+				name: "pl7.app/sequencing/readIndex",
+				optional: true
+			}],
+
+			// resulting aggregation axes names will be checked against supported combinations
+			// in the body template
+			passAggregationAxesNames: true,
+
+			// will be automatically propagated to all output specs
+			traceSteps: [{type: "milaboratories.mixcr-clonotyping", id: blockId, importance: 20, label: "DriverMap Clonotyping"}],
+
+			extra: {
+				preset: preset,
+				fileExtension: fileExtension,
+				limitInput: inputs.limitInput
+			}
+		}
+	)
+
+	clnsFiles := mixcrResults.output("clns")
+
+
+	/***********************************************************/
+	/********* Step 2: run mixcr export for each chain *********/
+	/***********************************************************/
+
+	// calculate chains to export
+	chains := []
+	for chainOrReceptor in receptorsOrChains {
+		if receptorInfos[chainOrReceptor] != undefined {
+			chains += receptorInfos[chainOrReceptor].chains
+		} else {
+			if is_undefined(chainInfos[chainOrReceptor]) {
+				ll.panic("chainInfo not found for %v", chainOrReceptor)
+			}
+			chains += [chainOrReceptor]
+		}
+	}
+
+	
+	exportParams := getExports.getExportParams(preset, blockId)
+
+	// tsv column names corresponding to keyArgs
+	keyColumns := exportParams.keyColumns
+	// tsv column names corresponding to abundanceArgs
+	abundanceColumns := exportParams.abundanceColumns
+	// main abundance column name
+	mainAbundanceColumn := exportParams.mainAbundanceColumn
+
+	// `mixcr export` args
+	mixcrExportArgs := exportParams.mixcrExportArgs
+
+	// Specs:
+
+	// specs for clone columns
+	keyAxesSpec := exportParams.keyAxesSpec
+	cloneColumnSpecs := exportParams.cloneColumnSpecs
+	abundanceColumnSpecs := exportParams.abundanceColumnSpecs
+	
+
+	// build clonotypes p-frame builder
+	clonotypes := pframes.pFrameBuilder()
+	for chain in chains {
+		chainInfo := chainInfos[chain]
+		ll.assert(!is_undefined(chainInfo), "chainInfo not found for chain %v", chain)
+
+		keyAxesSpecWithChain := [ maps.deepTransform(keyAxesSpec[0], {
+			spec: { domain: { "pl7.app/vdj/chain": chain } }
+		}) ]
+
+		// outputs to be produced by mixcr export
+		exportOutputs := [ {
+			/////////////////////// Tsv file ///////////////////////
+			type: "Resource",
+			spec: {
+				kind: "PColumn",
+				name: "mixcr.com/clonotypeTable",
+				domain: {
+					"pl7.app/vdj/clonotypingRunId": blockId
+				},
+				valueType: "File"
+			},
+			name: "cloneTableTsv",
+			path: ["tsv"]
+		}]
+
+		// Run mixcr export & VBC normalization script
+		exportResults := pframes.processColumn(
+			clnsFiles,
+			mixcrExportTpl,
+			exportOutputs,
+			{
+				// will be automatically propagated to all output specs
+				traceSteps: [{type: "milaboratories.mixcr-clonotyping.export", id: blockId + "." + chain, importance: 80, label: chainInfo.name}],
+
+				extra: {	
+					chains: chainInfo.mixcrFilter,
+					keyColumns: keyColumns,
+					exportArgs: mixcrExportArgs
+				}
+			}
+		)
+
+		// outputs to be produced by vbc processing scripts
+		vbcProcessingOutputs := [ {
+			/////////////////////// Tsv file ///////////////////////
+			type: "Resource",
+			spec: {
+				kind: "PColumn",
+				name: "mixcr.com/clonotypeTable",
+				domain: {
+					"pl7.app/vdj/clonotypingRunId": blockId
+				},
+				valueType: "File"
+			},
+			name: "cloneTableTsv",
+			path: ["tsv"]
+		}, {
+			/////////////////////// Abundance columns ///////////////////////
+			type: "Xsv",
+			xsvType: "tsv",
+			settings: {
+				axes: keyAxesSpecWithChain,
+				columns: abundanceColumnSpecs,
+				storageFormat: "Binary",
+				partitionKeyLength: 0
+			},
+			name: "abundancePf",
+			path: ["tsv"]
+		} ]
+
+		// Run mixcr export & VBC normalization script
+		vbcProcessingResults := pframes.processColumn(
+			exportResults.output("cloneTableTsv"),
+			vbcProcessingTpl,
+			vbcProcessingOutputs,
+			{
+				extra: {}
+			}
+		)
+
+		//
+		// Aggregating the data to produce:
+		//   [cloneKey] -> properties
+		// from:
+		//   [sampleId, cloneKey] -> properties
+		//
+		aggregationOutputs := [ {
+			type: "Xsv",
+			xsvType: "tsv",
+			settings: {
+				axes: keyAxesSpecWithChain,
+				columns: cloneColumnSpecs,
+				storageFormat: "Binary",
+				partitionKeyLength: 0
+			},
+			name: "byCloneKey",
+			path: ["tsv"]
+		} ]
+
+		// Run aggregation by clone key
+		aggregateByCloneKey := pframes.processColumn(
+			vbcProcessingResults.output("cloneTableTsv"),
+			aggClonesTpl,
+			aggregationOutputs,
+			{
+				aggregate: ["pl7.app/sampleId"],
+				extra: {	
+					mainAbundanceColumn: mainAbundanceColumn,
+					cloneColumnSpecs: slices.map(cloneColumnSpecs, func(col) {
+						return col.column
+					})
+				}
+			}
+		)
+
+		// only adding data outputs if we are in bulk mode
+		vbcProcessingResults.addXsvOutputToBuilder(clonotypes, "abundancePf", "abundancePf/" + chain + "/")
+		aggregateByCloneKey.addXsvOutputToBuilder(clonotypes, "byCloneKey", "byCloneKey/" + chain + "/")
+	}
+
+
+	return {
+		"qc.spec": mixcrResults.outputSpec("qc"),
+		"qc.data": mixcrResults.outputData("qc"),
+		"logs.spec": mixcrResults.outputSpec("logs"),
+		"logs.data": mixcrResults.outputData("logs"),
+		"reports.spec": mixcrResults.outputSpec("reports"),
+		"reports.data": mixcrResults.outputData("reports"),
+		"clns.spec": mixcrResults.outputSpec("clns"),
+		"clns.data": mixcrResults.outputData("clns"),
+		"clonotypes": clonotypes.build()
+	}
+})

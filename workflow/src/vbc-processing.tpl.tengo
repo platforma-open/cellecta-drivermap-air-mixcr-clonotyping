@@ -1,0 +1,38 @@
+// filter & normalize VBCs
+
+self := import("@platforma-sdk/workflow-tengo:tpl.light")
+assets := import("@platforma-sdk/workflow-tengo:assets")
+exec := import("@platforma-sdk/workflow-tengo:exec")
+
+self.defineOutputs(["tsv"])
+
+vbcFilterSw := assets.importSoftware("@platforma-open/cellecta.drivermap-mixcr-clonotyping.vbc-filtering:main")
+vbcNormalizationSw := assets.importSoftware("@platforma-open/cellecta.drivermap-mixcr-clonotyping.vbc-normalization:main")
+
+self.body(func(inputs) {
+	inputFile := inputs.__value__
+
+	// Exporting clones from clns file
+	filterCmd := exec.builder().
+		software(vbcFilterSw).
+		arg("input.tsv").
+		arg("output").
+		addFile("input.tsv", inputFile).
+		saveFile("output.tsv").
+		saveFile("output.kde.maximas.txt").
+		run()
+
+	normalizeCmd := exec.builder().
+		software(vbcNormalizationSw).
+		arg("input.kde.maximas.txt").
+		arg("input.tsv").
+		arg("output.tsv").
+		addFile("input.kde.maximas.txt", filterCmd.getFile("output.kde.maximas.txt")).
+		addFile("input.tsv", filterCmd.getFile("output.tsv")).
+		saveFile("output.tsv").
+		run()
+
+	return {
+		tsv: normalizeCmd.getFile("output.tsv")
+	}
+})
