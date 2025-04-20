@@ -166,22 +166,6 @@ importers:
         specifier: 'catalog:'
         version: 2.15.6
 
-  test:
-    dependencies:
-      this-block:
-        specifier: workspace:@platforma-open/cellecta.drivermap-mixcr-clonotyping@*
-        version: link:../block
-    devDependencies:
-      '@platforma-sdk/test':
-        specifier: 'catalog:'
-        version: 1.29.20(@types/node@22.14.1)
-      typescript:
-        specifier: 'catalog:'
-        version: 5.5.4
-      vitest:
-        specifier: 'catalog:'
-        version: 3.1.1(@types/node@22.14.1)(yaml@2.7.1)
-
   ui:
     dependencies:
       '@platforma-open/cellecta.drivermap-mixcr-clonotyping.model':

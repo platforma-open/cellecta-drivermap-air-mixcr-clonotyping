@@ -1,6 +1,6 @@
 {
   "name": "@platforma-open/cellecta.drivermap-mixcr-clonotyping.workflow",
-  "version": "1.5.1",
+  "version": "1.0.0",
   "type": "module",
   "description": "Block Workflow",
   "scripts": {

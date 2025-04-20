@@ -1,6 +1,6 @@
 {
   "name": "@platforma-open/cellecta.drivermap-mixcr-clonotyping",
-  "version": "2.1.10",
+  "version": "1.0.0",
   "scripts": {
     "build": "rm -rf block-pack/* && block-tools pack",
     "mark-stable": "block-tools mark-stable -r 's3://milab-euce1-prod-pkgs-s3-block-registry/pub/releases/?region=eu-central-1'",
@@ -23,14 +23,14 @@
       "ui": "@platforma-open/cellecta.drivermap-mixcr-clonotyping.ui/dist"
     },
     "meta": {
-      "title": "Cellecta DriverMap™ AIR Profiling",
+      "title": "Cellecta DriverMap™ AIR Clonotyping",
       "logo": "file:../logos/block-logo.png",
-      "url": "https://github.com/platforma-open/mixcr-cellecta-clonotyping",
-      "docs": "https://github.com/platforma-open/mixcr-cellecta-clonotyping/docs",
+      "url": "https://github.com/platforma-open/cellecta-drivermap-air-mixcr-clonotyping",
+      "docs": "https://github.com/platforma-open/cellecta-drivermap-air-mixcr-clonotyping/docs",
       "support": "mailto:support@milaboratories.com",
       "description": "Clonotyping analysis of TCR and BCR data generated with Cellecta DriverMap™ AIR TCR-BCR Profiling Kit v2.",
       "longDescription": "file:../docs/description.md",
-      "changelog": "file:../CHANGELOG.md",
+      "changelog": "file:./CHANGELOG.md",
       "tags": [
         "airr",
         "vdj",
