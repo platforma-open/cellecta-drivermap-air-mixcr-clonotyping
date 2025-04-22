@@ -1,4 +1,4 @@
-# @platforma-open/cellecta.drivermap-mixcr-clonotyping
+# @platforma-open/cellecta.drivermap-mixcr-clonotyping.ui
 
 ## 1.0.1
 
@@ -6,6 +6,7 @@
 
 - d0f041c: Publish
 - 9091ccc: Init
+- 61d12ff: minor improvements
 - d232f1b: Publish block
 - 9091ccc: Init
 - Updated dependencies [d0f041c]
@@ -14,5 +15,3 @@
 - Updated dependencies [d232f1b]
 - Updated dependencies [9091ccc]
   - @platforma-open/cellecta.drivermap-mixcr-clonotyping.model@1.0.1
-  - @platforma-open/cellecta.drivermap-mixcr-clonotyping.ui@1.0.1
-  - @platforma-open/cellecta.drivermap-mixcr-clonotyping.workflow@1.0.1

@@ -1,5 +1,19 @@
 # @platforma-open/cellecta.drivermap-mixcr-clonotyping.workflow
 
+## 1.0.1
+
+### Patch Changes
+
+- d0f041c: Publish
+- 9091ccc: Init
+- d232f1b: Publish block
+- 9091ccc: Init
+- Updated dependencies [d0f041c]
+- Updated dependencies [d232f1b]
+  - @platforma-open/milaboratories.mixcr-clonotyping-2.hash-column@1.1.2
+  - @platforma-open/cellecta.drivermap-mixcr-clonotyping.vbc-filtering@1.0.1
+  - @platforma-open/cellecta.drivermap-mixcr-clonotyping.vbc-normalization@1.0.1
+
 ## 1.5.1
 
 ### Patch Changes
