@@ -156,6 +156,26 @@ cloneColumns := func(preset, blockId) {
 			} ]
 			mixcrExportArgs += [ [ "-" + alphabetShortMixcr + "Feature", featureU ] ]
 			orderP -= 100
+
+			// label column
+			if isAminoAcid && featureU == "CDR3" {
+				cloneColumnSpecs += [ {
+					column: alphabetShortMixcr + "Seq" + featureU,
+					id: "clonotype-label",
+					preProcess: [{
+						type: "regexpReplace",
+						pattern: "^region_not_covered$",
+						replacement: "Unlabelled"
+					}],
+					spec: {
+						name: "pl7.app/label",
+						valueType: "String",
+						annotations: a(100000, false, {
+							"pl7.app/label": "Clone label"
+						})
+					}
+				} ]
+			}
 		}
 	}
 

@@ -26,6 +26,7 @@ self.body(func(inputs) {
 		inMediumQueue().
 		printErrStreamToStdout().
 		software(mixcrSw).
+		dontSaveStdoutOrStderr().
 		secret("MI_LICENSE", "MI_LICENSE").
 		arg("exportClones").
 		arg("--dont-split-files").
