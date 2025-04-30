@@ -15,6 +15,7 @@ self.body(func(inputs) {
 	// Exporting clones from clns file
 	filterCmd := exec.builder().
 		software(vbcFilterSw).
+		dontSaveStdoutOrStderr().
 		arg("input.tsv").
 		arg("output").
 		addFile("input.tsv", inputFile).
@@ -24,6 +25,7 @@ self.body(func(inputs) {
 
 	normalizeCmd := exec.builder().
 		software(vbcNormalizationSw).
+		dontSaveStdoutOrStderr().
 		arg("input.kde.maximas.txt").
 		arg("input.tsv").
 		arg("output.tsv").
