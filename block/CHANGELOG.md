@@ -1,5 +1,16 @@
 # @platforma-open/cellecta.drivermap-mixcr-clonotyping
 
+## 1.1.0
+
+### Minor Changes
+
+- 8eb9eff: allow prepare venv on Windows
+- 8eb9eff: allow prepare venv on Windows
+
+### Patch Changes
+
+- 9f4c28f: allow prepare venv on Windows
+
 ## 1.0.3
 
 ### Patch Changes
