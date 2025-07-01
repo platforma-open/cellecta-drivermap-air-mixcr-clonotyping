@@ -16,8 +16,8 @@ catalogs:
       specifier: ^1.9.0
       version: 1.10.2
     '@platforma-open/milaboratories.runenv-python-3':
-      specifier: ^1.1.7
-      version: 1.1.10
+      specifier: ^1.1.16
+      version: 1.1.16
     '@platforma-open/milaboratories.software-mixcr':
       specifier: 4.7.0-164-develop
       version: 4.7.0-164-develop
@@ -140,7 +140,7 @@ importers:
     dependencies:
       '@platforma-open/milaboratories.runenv-python-3':
         specifier: 'catalog:'
-        version: 1.1.10
+        version: 1.1.16
     devDependencies:
       '@platforma-sdk/package-builder':
         specifier: 'catalog:'
@@ -150,7 +150,7 @@ importers:
     dependencies:
       '@platforma-open/milaboratories.runenv-python-3':
         specifier: 'catalog:'
-        version: 1.1.10
+        version: 1.1.16
     devDependencies:
       '@platforma-sdk/package-builder':
         specifier: 'catalog:'
@@ -160,7 +160,7 @@ importers:
     dependencies:
       '@platforma-open/milaboratories.runenv-python-3':
         specifier: 'catalog:'
-        version: 1.1.10
+        version: 1.1.16
     devDependencies:
       '@platforma-sdk/package-builder':
         specifier: 'catalog:'
@@ -1150,8 +1150,8 @@ packages:
   '@platforma-open/milaboratories.mixcr-clonotyping-2.model@1.10.2':
     resolution: {integrity: sha512-yoeXr22jpp8O9Z3EEa33QTWl56nF75yTQ6XfAbsGc9EQeJFOO2xkA4i+d/9BFTAsoyzufBbDJgtTqQC9Oin4sw==}
 
-  '@platforma-open/milaboratories.runenv-python-3@1.1.10':
-    resolution: {integrity: sha512-6HR0eUGXrUhH/QYoN5/DvZ61ZSmi2rCafo277Sg6C5nXRc0vH8XZiylJhmxleaIo5I5S5SLiRAO2sI4lVsXnxg==}
+  '@platforma-open/milaboratories.runenv-python-3@1.1.16':
+    resolution: {integrity: sha512-A46M7cK1uVW4itLjXX9nodZm97ETcDBDQPQpBsPmu+Wjy8wlyHxUUH/v8KvtW45gNcW+yNO0LvzqE0u4GL86Jg==}
 
   '@platforma-open/milaboratories.software-mixcr@4.7.0-164-develop':
     resolution: {integrity: sha512-gwemXlrVz/du8T5FbwC6feIK4PXbBCfFkkdiXTuuBNWpR47oKDePCXGAU3c6VrRiYKr15fLLP7quly+Pv2nXfw==}
@@ -4990,7 +4990,7 @@ snapshots:
       '@platforma-sdk/model': 1.30.3
       zod: 3.23.8
 
-  '@platforma-open/milaboratories.runenv-python-3@1.1.10': {}
+  '@platforma-open/milaboratories.runenv-python-3@1.1.16': {}
 
   '@platforma-open/milaboratories.software-mixcr@4.7.0-164-develop': {}
 
