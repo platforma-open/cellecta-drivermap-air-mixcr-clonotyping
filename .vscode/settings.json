@@ -25,7 +25,7 @@
     "eslint.format.enable": true,
     "files.exclude": {
         "**/.npmrc": true,
-        "**/*.tgz": true,
+        "**/*.tgz": false,
         "**/block-pack": true,
         "**/dist": true,
         "**/index.d.ts": true,
