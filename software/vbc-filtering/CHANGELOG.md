@@ -1,5 +1,11 @@
 # @platforma-open/cellecta.drivermap-mixcr-clonotyping.vbc-filtering
 
+## 2.0.1
+
+### Patch Changes
+
+- eb04887: Technical release
+
 ## 2.0.0
 
 ### Major Changes

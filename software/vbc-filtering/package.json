@@ -1,6 +1,6 @@
 {
   "name": "@platforma-open/cellecta.drivermap-mixcr-clonotyping.vbc-filtering",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "scripts": {
     "build": "pl-pkg build",
     "prepublishOnly": "pl-pkg prepublish",

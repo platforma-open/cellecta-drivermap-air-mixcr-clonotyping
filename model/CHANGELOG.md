@@ -1,5 +1,11 @@
 # @platforma-open/cellecta.drivermap-mixcr-clonotyping.model
 
+## 1.0.2
+
+### Patch Changes
+
+- eb04887: Technical release
+
 ## 1.0.1
 
 ### Patch Changes

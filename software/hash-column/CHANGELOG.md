@@ -1,5 +1,11 @@
 # @platforma-open/milaboratories.mixcr-clonotyping-2.hash-column
 
+## 2.0.1
+
+### Patch Changes
+
+- eb04887: Technical release
+
 ## 2.0.0
 
 ### Major Changes

@@ -1,5 +1,15 @@
 # @platforma-open/cellecta.drivermap-mixcr-clonotyping.workflow
 
+## 2.0.1
+
+### Patch Changes
+
+- eb04887: Technical release
+- Updated dependencies [eb04887]
+  - @platforma-open/milaboratories.mixcr-clonotyping-2.hash-column@2.0.1
+  - @platforma-open/cellecta.drivermap-mixcr-clonotyping.vbc-filtering@2.0.1
+  - @platforma-open/cellecta.drivermap-mixcr-clonotyping.vbc-normalization@2.0.1
+
 ## 2.0.0
 
 ### Major Changes

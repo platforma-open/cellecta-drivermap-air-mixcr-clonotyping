@@ -1,5 +1,15 @@
 # @platforma-open/cellecta.drivermap-mixcr-clonotyping
 
+## 1.1.1
+
+### Patch Changes
+
+- eb04887: Technical release
+- Updated dependencies [eb04887]
+  - @platforma-open/cellecta.drivermap-mixcr-clonotyping.model@1.0.2
+  - @platforma-open/cellecta.drivermap-mixcr-clonotyping.ui@1.0.2
+  - @platforma-open/cellecta.drivermap-mixcr-clonotyping.workflow@2.0.1
+
 ## 1.1.0
 
 ### Minor Changes
