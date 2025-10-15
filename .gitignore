@@ -7,5 +7,4 @@ work/
 log/
 .turbo
 vite.config.*.timestamp-*
-software/**/*.sw.json
-software/*.tgz
+pkg-*.tgz
