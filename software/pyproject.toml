@@ -1,25 +1,40 @@
 [project]
 name = "cellecta-drivermap-air-vbc-scripts"
 version = "0.0.0"
-description = "Test/lint harness for the Cellecta DriverMap AIR block Python software (vbc-filtering, vbc-normalization, hash-column). Production deps are each package's requirements.txt; this dev group mirrors them for tests."
+description = "Dependency source-of-truth + test/lint harness for the block's Python software. Each package's src/requirements.txt is GENERATED from the matching dependency group below via `pnpm deps:export` — edit dependencies here, never in requirements.txt."
 requires-python = ">=3.12.0, <3.13"
 
 [dependency-groups]
-dev = [
-    # vbc-filtering runtime (software/vbc-filtering/src/requirements.txt)
+# --- Production runtime deps: the single source of truth for each software package's
+#     src/requirements.txt. After editing, run `pnpm deps:export` (repo root) to
+#     regenerate the .txt files; CI fails if they drift (see python-tests.yaml). ---
+vbc-filtering = [
     "pandas==2.2.3",
     "numpy==2.2.4",
     "scikit-learn==1.6.1",
     "scipy==1.15.2",
-    # hash-column runtime (software/hash-column/src/requirements.txt).
-    # Production ships polars-lts-cpu for older-CPU compatibility; the test env uses
-    # regular polars pinned to the same version (the lts-cpu and regular distributions
-    # both provide the `polars` module and cannot be co-installed). Hashing is identical.
+]
+vbc-normalization = [
+    "pandas==2.2.3",
+]
+hash-column = [
+    "polars-hash==0.5.2",
+    "polars-lts-cpu==1.23.0",
+]
+
+# --- Test / lint environment: what `uv sync` installs to run pytest + ruff. Composes the
+#     production groups so tests exercise the real libs, with one swap: it uses regular
+#     `polars` instead of `polars-lts-cpu`. polars-lts-cpu and the `polars` that polars-hash
+#     pulls in both provide the `polars` module and cannot co-install; hashing output is
+#     identical. Production keeps polars-lts-cpu for older-CPU compatibility. ---
+dev = [
+    { include-group = "vbc-filtering" },
+    { include-group = "vbc-normalization" },
     "polars-hash==0.5.2",
     "polars==1.23.0",
-    # test tooling
     "pytest>=9.0.2",
     "pytest-cov>=6.0.0",
+    "ruff>=0.14",
 ]
 
 [tool.pytest.ini_options]

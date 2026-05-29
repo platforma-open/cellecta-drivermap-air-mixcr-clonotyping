@@ -22,6 +22,7 @@ jobs:
 
       - uses: astral-sh/setup-uv@v5
         with:
+          version: "0.11.16"
           enable-cache: true
           cache-dependency-glob: software/uv.lock
 
@@ -36,3 +37,39 @@ jobs:
 
       - name: Run pytest
         run: uv run pytest
+
+  requirements-sync:
+    # Each src/requirements.txt is generated from the dependency groups in pyproject.toml
+    # (the single source of truth) and is what pl-pkg builds from. This job fails if a
+    # committed file has drifted — e.g. a dependency was changed in pyproject.toml but the
+    # requirements.txt files were not regenerated. Fix locally with `pnpm deps:export`.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: software
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.11.16"
+          enable-cache: true
+          cache-dependency-glob: software/uv.lock
+
+      - name: Regenerate requirements.txt from pyproject.toml
+        # Same script `pnpm deps:export` runs locally — single source of truth.
+        run: bash scripts/deps-export.sh
+
+      - name: Verify requirements.txt files are in sync with pyproject.toml
+        run: |
+          if ! git diff --exit-code -- \
+              vbc-filtering/src/requirements.txt \
+              vbc-normalization/src/requirements.txt \
+              hash-column/src/requirements.txt; then
+            echo ""
+            echo "::error::A src/requirements.txt is out of sync with pyproject.toml"
+            echo "Runtime deps are defined in software/pyproject.toml; the requirements.txt files are generated."
+            echo "Resolve locally with:  pnpm deps:export   (then commit the updated files)"
+            exit 1
+          fi
+          echo "All requirements.txt files are in sync with pyproject.toml."
