@@ -8,3 +8,10 @@ log/
 .turbo
 vite.config.*.timestamp-*
 pkg-*.tgz
+
+# Python (software/ test harness). uv.lock IS tracked (CI uses --locked).
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
