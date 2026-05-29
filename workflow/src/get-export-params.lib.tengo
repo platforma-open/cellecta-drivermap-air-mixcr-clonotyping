@@ -460,6 +460,15 @@ getExportParams := func(preset, blockId) {
 	}
 }
 
+/**
+ * Returns the assembling feature for a preset (e.g. "CDR3", or "CDR1_TO_FR4" for full-length).
+ * Used to annotate the clns column with the feature clones were actually assembled on.
+ */
+getAssemblingFeature := func(preset) {
+	return presets[preset].assemblingFeature
+}
+
 export {
-	getExportParams: getExportParams
+	getExportParams: getExportParams,
+	getAssemblingFeature: getAssemblingFeature
 }

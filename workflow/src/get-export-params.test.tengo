@@ -47,3 +47,16 @@ Test_GetExportParams_CDR3Presets_KeyOnCDR3 := func() {
 		test.isEqual(params.keyColumns[0], "nSeqCDR3", "CDR3 preset key column must be nSeqCDR3: " + preset)
 	}
 }
+
+// MILAB-6335 Tier A: the clns `mixcr.com/assemblingFeature` annotation is derived from this.
+Test_GetAssemblingFeature := func() {
+	test.isEqual(
+		getExports.getAssemblingFeature("cellecta-human-rna-xcr-full-length-mivbc-drivermap-air-v2"),
+		"CDR1_TO_FR4", "full-length assembling feature must be CDR1_TO_FR4")
+	test.isEqual(
+		getExports.getAssemblingFeature("cellecta-human-rna-xcr-mivbc-drivermap-air-v2"),
+		"CDR3", "RNA preset assembling feature must be CDR3")
+	test.isEqual(
+		getExports.getAssemblingFeature("cellecta-human-dna-xcr-mivbc-drivermap-air-v2"),
+		"CDR3", "DNA preset assembling feature must be CDR3")
+}

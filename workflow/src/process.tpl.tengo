@@ -84,6 +84,11 @@ self.body(func(inputs) {
 	// input file extension (fasta, fastq, etc)
 	fileExtension := inputSpec.domain["pl7.app/fileExtension"]
 
+	// Feature clones are assembled on for this preset (e.g. CDR3, or CDR1_TO_FR4 for
+	// full-length). Annotated on the clns column so downstream blocks know how clones
+	// were assembled. MILAB-6335.
+	assemblingFeature := getExports.getAssemblingFeature(preset)
+
 
 	/***********************************************************/
 	/****************** Step 1: run mixcr analyze **************/
@@ -156,7 +161,7 @@ self.body(func(inputs) {
 					"pl7.app/vdj/clonotypingRunId": blockId
 				},
 				annotations: {
-					"mixcr.com/assemblingFeature": "CDR3", // TODO: add assembling feature
+					"mixcr.com/assemblingFeature": assemblingFeature,
 					"pl7.app/label": "MiXCR Clonesets"
 				},
 				valueType: "File"
