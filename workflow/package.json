@@ -9,7 +9,7 @@
     "format": "/usr/bin/env emacs --script ./format.el"
   },
   "dependencies": {
-    "@platforma-open/milaboratories.mixcr-clonotyping-2.hash-column": "workspace:*",
+    "@platforma-open/cellecta.drivermap-mixcr-clonotyping.hash-column": "workspace:*",
     "@platforma-open/cellecta.drivermap-mixcr-clonotyping.vbc-filtering": "workspace:*",
     "@platforma-open/cellecta.drivermap-mixcr-clonotyping.vbc-normalization": "workspace:*"
   },

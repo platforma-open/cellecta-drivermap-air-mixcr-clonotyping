@@ -1,4 +1,6 @@
-# @platforma-open/milaboratories.mixcr-clonotyping-2.hash-column
+# @platforma-open/cellecta.drivermap-mixcr-clonotyping.hash-column
+
+> Renamed from `@platforma-open/milaboratories.mixcr-clonotyping-2.hash-column` (MILAB-6335). Entries below predate the rename.
 
 ## 2.0.1
 
