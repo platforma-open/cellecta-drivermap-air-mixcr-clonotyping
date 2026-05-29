@@ -1,0 +1,49 @@
+// Unit tests for get-export-params.lib.tengo (pure logic, no backend).
+// Regression for MILAB-6335: the full-length preset declared a key column
+// (nSeqVDJRegion) that the export never generated, so getExportParams panicked
+// in keyAxesSpec ("column nSeqVDJRegion does not exist in export").
+
+test := import("@platforma-sdk/workflow-tengo:test")
+getExports := import(":get-export-params")
+
+// Returns true if cloneColumnSpecs contains a column with the given .column name.
+hasColumn := func(params, name) {
+	for col in params.cloneColumnSpecs {
+		if col.column == name {
+			return true
+		}
+	}
+	return false
+}
+
+// MILAB-6335: full-length must resolve without panicking and key on the real
+// assembling feature (CDR1_TO_FR4), not VDJRegion.
+Test_GetExportParams_FullLength_KeysOnCDR1ToFR4 := func() {
+	params := getExports.getExportParams("cellecta-human-rna-xcr-full-length-mivbc-drivermap-air-v2", "test-block")
+
+	// keyAxesSpec built successfully (this is where the bug panicked).
+	test.isTrue(!is_undefined(params.keyAxesSpec), "keyAxesSpec must be defined for full-length preset")
+	test.isEqual(len(params.keyAxesSpec), 1, "expected exactly one clone key axis")
+
+	// The key column is generated and is the assembling-feature sequence.
+	test.isTrue(hasColumn(params, "nSeqCDR1_TO_FR4"), "full-length export must generate nSeqCDR1_TO_FR4")
+	test.isEqual(params.keyColumns[0], "nSeqCDR1_TO_FR4", "full-length key column must be nSeqCDR1_TO_FR4")
+
+	// FR1 is not covered by the assembling region and must not be exported.
+	test.isFalse(hasColumn(params, "nSeqFR1"), "full-length must not export uncovered FR1")
+	// The stale VDJRegion column must be gone.
+	test.isFalse(hasColumn(params, "nSeqVDJRegion"), "full-length must not reference nSeqVDJRegion")
+}
+
+// Guard the working CDR3 presets so the fix does not regress them.
+Test_GetExportParams_CDR3Presets_KeyOnCDR3 := func() {
+	for preset in [
+		"cellecta-human-rna-xcr-mivbc-drivermap-air-v2",
+		"cellecta-human-dna-xcr-mivbc-drivermap-air-v2"
+	] {
+		params := getExports.getExportParams(preset, "test-block")
+		test.isTrue(!is_undefined(params.keyAxesSpec), "keyAxesSpec must be defined for " + preset)
+		test.isTrue(hasColumn(params, "nSeqCDR3"), "CDR3 preset must generate nSeqCDR3: " + preset)
+		test.isEqual(params.keyColumns[0], "nSeqCDR3", "CDR3 preset key column must be nSeqCDR3: " + preset)
+	}
+}

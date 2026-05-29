@@ -21,13 +21,16 @@ presets := {
 		keyColumns: ["nSeqCDR3", "bestVGene", "bestJGene", "bestCGene"]
 	},
 	"cellecta-human-rna-xcr-full-length-mivbc-drivermap-air-v2": {
-		assemblingFeature: "VDJRegion",
-		features: ["FR1", "CDR1", "FR2", "CDR2", "FR3", "CDR3", "FR4"],
+		// This kit assembles clonotypes on CDR1_TO_FR4 ({CDR1Begin:FR4End}), not VDJRegion:
+		// FR1 is not covered by the assembling region. See MILAB-6335. Verified against the
+		// resolved preset (tools/mixcr regression dump) and io.repseq.core.GeneFeature.CDR1_TO_FR4.
+		assemblingFeature: "CDR1_TO_FR4",
+		features: ["CDR1_TO_FR4", "CDR1", "FR2", "CDR2", "FR3", "CDR3", "FR4"],
 		coreGeneFeatures: {
-			"V": "{FR1Begin:FR3End}",
+			"V": "{CDR1Begin:FR3End}",
 			"J": "FR4"
 		},
-		keyColumns: ["nSeqVDJRegion", "bestVGene", "bestJGene", "bestCGene"]
+		keyColumns: ["nSeqCDR1_TO_FR4", "bestVGene", "bestJGene", "bestCGene"]
 	}
 }
 
