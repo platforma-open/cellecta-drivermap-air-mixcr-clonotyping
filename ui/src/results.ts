@@ -28,6 +28,10 @@ export const resultMap = computed(() => {
   const sampleLabels = app.model.outputs.sampleLabels;
   if (sampleLabels === undefined) return undefined;
 
+  // Block-level run state: true until the whole workflow (MiXCR + clone export +
+  // the VBC Python step) finishes — not just MiXCR.
+  const blockRunning = app.model.outputs.isRunning;
+
   const resultMap = new Map<string, Result>();
 
   for (const sampleId in sampleLabels) {
@@ -35,7 +39,7 @@ export const resultMap = computed(() => {
     const result: Result = {
       sampleId: sampleId,
       label: label,
-      progress: app.model.outputs.isRunning ? "Queued" : "Not started",
+      progress: blockRunning ? "Queued" : "Not started",
     };
     resultMap.set(sampleId, result);
   }
@@ -46,14 +50,16 @@ export const resultMap = computed(() => {
   const qc = app.model.outputs.qc;
   const reports = app.model.outputs.reports;
   const progress = app.model.outputs.progress;
-  let done = false;
+  // MiXCR log liveness per sample: the stream is live only while `mixcr analyze`
+  // is still running for that sample.
+  const mixcrLogLive = new Map<string, boolean>();
   if (logs) {
     for (const logData of logs.data) {
       const sampleId = logData.key[0] as string;
       const r = resultMap.get(sampleId);
       if (!r) continue;
 
-      done = !isLiveLog(logData.value);
+      mixcrLogLive.set(sampleId, isLiveLog(logData.value));
 
       r.logHandle = logData.value;
     }
@@ -94,15 +100,30 @@ export const resultMap = computed(() => {
       }
     }
 
+  // Latest MiXCR progress line per sample (emitted only while its log is live).
+  const mixcrProgress = new Map<string, string>();
   if (progress) {
     for (const progressData of progress.data) {
       const sampleId = progressData.key[0] as string;
-      const r = resultMap.get(sampleId);
-      if (!r) continue;
+      if (progressData.value) {
+        mixcrProgress.set(sampleId, progressData.value.replace(ProgressPrefix, ""));
+      }
+    }
+  }
 
-      const p = done ? "Done" : (progressData.value?.replace(ProgressPrefix, "") ?? "Not started");
-
-      r.progress = p;
+  // Phase-aware status. MiXCR emits progress only while its log is live; once it
+  // closes, clone export and the VBC Python step still run — tracked by the
+  // block-level `isRunning`. Report "Done" only when the whole block has
+  // finished, so the post-MiXCR phase shows "Processing clonotypes" instead of a
+  // premature "Done".
+  for (const r of resultMap.values()) {
+    const logLive = mixcrLogLive.get(r.sampleId);
+    if (logLive === undefined) {
+      r.progress = blockRunning ? "Queued" : "Not started";
+    } else if (logLive) {
+      r.progress = mixcrProgress.get(r.sampleId) ?? "Running";
+    } else {
+      r.progress = blockRunning ? "Processing clonotypes" : "Done";
     }
   }
 
