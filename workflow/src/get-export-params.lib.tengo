@@ -21,13 +21,19 @@ presets := {
 		keyColumns: ["nSeqCDR3", "bestVGene", "bestJGene", "bestCGene"]
 	},
 	"cellecta-human-rna-xcr-full-length-mivbc-drivermap-air-v2": {
-		assemblingFeature: "VDJRegion",
+		// This kit assembles clones by {CDR1Begin:FR4End}, not VDJRegion, so no
+		// nSeqVDJRegion column is exported. The clone key is the consecutive
+		// regions spanning CDR1Begin..FR4End (FR1 precedes CDR1Begin and is
+		// exported for display only). assemblingFeature is the display anchor for
+		// the default-visible aa column (CDR3, the conventional anchor); it must
+		// be one of `features`.
+		assemblingFeature: "CDR3",
 		features: ["FR1", "CDR1", "FR2", "CDR2", "FR3", "CDR3", "FR4"],
 		coreGeneFeatures: {
 			"V": "{FR1Begin:FR3End}",
 			"J": "FR4"
 		},
-		keyColumns: ["nSeqVDJRegion", "bestVGene", "bestJGene", "bestCGene"]
+		keyColumns: ["nSeqCDR1", "nSeqFR2", "nSeqCDR2", "nSeqFR3", "nSeqCDR3", "nSeqFR4", "bestVGene", "bestJGene", "bestCGene"]
 	}
 }
 
