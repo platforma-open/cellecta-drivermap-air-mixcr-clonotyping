@@ -1,34 +1,35 @@
 {
-  "name": "@platforma-open/cellecta.drivermap-mixcr-clonotyping",
   "version": "1.0.0",
-  "scripts": {
-    "pretty": "prettier --write \"./**/*.{js,jsx,mjs,cjs,ts,tsx,json,vue}\"",
-    "build": "turbo run build",
-    "build:dev": "PL_PKG_DEV=local turbo run build",
-    "test": "PL_PKG_DEV=local turbo run test --concurrency 1",
-    "mark-stable": "turbo run mark-stable",
-    "watch": "turbo watch build",
-    "changeset": "changeset",
-    "version-packages": "changeset version",
-    "update-sdk": "node scripts/update-sdk-packages.js"
-  },
   "files": [
     "index.d.ts",
     "index.js"
   ],
-  "devDependencies": {
-    "turbo": "catalog:",
-    "@changesets/cli": "catalog:",
-    "js-yaml": "catalog:"
+  "scripts": {
+    "build": "turbo run build",
+    "build:dev": "env PL_PKG_DEV=local turbo run build",
+    "test": "env PL_PKG_DEV=local turbo run test --concurrency 1",
+    "mark-stable": "turbo run mark-stable",
+    "watch": "turbo watch build",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "update-sdk": "block-tools structure refresh --update-deps-only",
+    "fmt": "turbo run fmt",
+    "check": "turbo run check",
+    "test:dry-run": "env PL_PKG_DEV=local turbo run test --dry-run=json",
+    "do-pack": "turbo run do-pack",
+    "upgrade-sdk": "block-tools structure refresh --update-deps-only && pnpm i && block-tools structure refresh && pnpm i && pnpm fmt"
   },
-  "//pnpm": {
-    "overrides": {
-      "@milaboratories/pl-model-common": "file:/Users/poslavskysv/Projects/milab/platforma/platforma-sdk/lib/model/common/package.tgz",
-      "@platforma-sdk/model": "file:/Users/poslavskysv/Projects/milab/platforma/platforma-sdk/sdk/model/package.tgz",
-      "@platforma-sdk/ui-vue": "file:/Users/poslavskysv/Projects/milab/platforma/platforma-sdk/sdk/ui-vue/package.tgz",
-      "@platforma-sdk/workflow-tengo": "file:/Users/poslavskysv/Projects/milab/platforma/platforma-sdk/sdk/workflow-tengo/package.tgz",
-      "@milaboratories/uikit": "file:/Users/poslavskysv/Projects/milab/platforma/platforma-sdk/lib/ui/uikit/package.tgz"
-    }
+  "devDependencies": {
+    "@changesets/cli": "catalog:",
+    "@milaboratories/ts-builder": "catalog:",
+    "@platforma-sdk/block-tools": "catalog:",
+    "js-yaml": "catalog:",
+    "shx": "catalog:",
+    "turbo": "catalog:"
+  },
+  "peerDependencies": {
+    "oxfmt": "*",
+    "oxlint": "*"
   },
   "packageManager": "pnpm@9.12.0"
 }

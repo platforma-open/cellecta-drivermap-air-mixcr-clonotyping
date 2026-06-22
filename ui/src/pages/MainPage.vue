@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { AgGridVue } from 'ag-grid-vue3';
+import { AgGridVue } from "ag-grid-vue3";
 
-import type { Qc } from '@platforma-open/milaboratories.mixcr-clonotyping-2.model';
-import type { PlAgHeaderComponentParams } from '@platforma-sdk/ui-vue';
+import type { Qc } from "@platforma-open/milaboratories.mixcr-clonotyping-2.model";
+import type { PlAgHeaderComponentParams } from "@platforma-sdk/ui-vue";
 import {
   AgGridTheme,
   PlAgCellStatusTag,
@@ -17,17 +17,17 @@ import {
   autoSizeRowNumberColumn,
   createAgGridColDef,
   makeRowNumberColDef,
-} from '@platforma-sdk/ui-vue';
-import type { ColDef, GridApi, GridOptions, GridReadyEvent } from 'ag-grid-enterprise';
-import { ClientSideRowModelModule, ModuleRegistry } from 'ag-grid-enterprise';
-import { computed, reactive, shallowRef } from 'vue';
-import { useApp } from '../app';
-import { getAlignmentChartSettings } from '../charts/alignmentChartSettings';
-import { getChainsChartSettings } from '../charts/chainsChartSettings';
-import { parseProgressString } from '../parseProgress';
-import { resultMap, type Result } from '../results';
-import SampleReportPanel from './SampleReportPanel.vue';
-import SettingsPanel from './SettingsPanel.vue';
+} from "@platforma-sdk/ui-vue";
+import type { ColDef, GridApi, GridOptions, GridReadyEvent } from "ag-grid-enterprise";
+import { ClientSideRowModelModule, ModuleRegistry } from "ag-grid-enterprise";
+import { computed, reactive, shallowRef } from "vue";
+import { useApp } from "../app";
+import { getAlignmentChartSettings } from "../charts/alignmentChartSettings";
+import { getChainsChartSettings } from "../charts/chainsChartSettings";
+import { parseProgressString } from "../parseProgress";
+import { resultMap, type Result } from "../results";
+import SampleReportPanel from "./SampleReportPanel.vue";
+import SettingsPanel from "./SettingsPanel.vue";
 // import SampleReportPanel from './SampleReportPanel.vue';
 // import SettingsPanel from './SettingsPanel.vue';
 
@@ -62,11 +62,11 @@ const qcPriority = { OK: 0, WARN: 1, ALERT: 2 };
 const columnDefs: ColDef<Result>[] = [
   makeRowNumberColDef(),
   createAgGridColDef<Result, string>({
-    colId: 'label',
-    field: 'label',
-    headerName: 'Sample',
-    headerComponentParams: { type: 'Text' } satisfies PlAgHeaderComponentParams,
-    pinned: 'left',
+    colId: "label",
+    field: "label",
+    headerName: "Sample",
+    headerComponentParams: { type: "Text" } satisfies PlAgHeaderComponentParams,
+    pinned: "left",
     lockPinned: true,
     sortable: true,
     cellRenderer: PlAgTextAndButtonCell,
@@ -75,55 +75,55 @@ const columnDefs: ColDef<Result>[] = [
     },
   }),
   createAgGridColDef<Result, string>({
-    colId: 'progress',
-    field: 'progress',
-    headerName: 'Progress',
-    headerComponentParams: { type: 'Progress' } satisfies PlAgHeaderComponentParams,
+    colId: "progress",
+    field: "progress",
+    headerName: "Progress",
+    headerComponentParams: { type: "Progress" } satisfies PlAgHeaderComponentParams,
     progress(cellData, cd) {
       const parsed = parseProgressString(cellData);
 
       const p = cd?.data?.progress;
-      if (p === 'Not started' || p === 'Queued') {
+      if (p === "Not started" || p === "Queued") {
         return {
-          status: 'not_started',
+          status: "not_started",
           text: parsed.stage,
         };
       }
 
       return {
-        status: parsed.stage === 'Done' ? 'done' : 'running',
+        status: parsed.stage === "Done" ? "done" : "running",
         percent: parsed.percentage,
         text: parsed.stage,
-        suffix: parsed.etaLabel ?? '',
+        suffix: parsed.etaLabel ?? "",
       };
     },
   }),
   createAgGridColDef({
-    colId: 'qc',
-    field: 'qc',
+    colId: "qc",
+    field: "qc",
     width: 126,
     cellRendererSelector: (cellData) => {
-      const type = (cellData.data?.qc as Result['qc'])?.reduce(
-        (result: Qc[number]['status'], item) =>
+      const type = (cellData.data?.qc as Result["qc"])?.reduce(
+        (result: Qc[number]["status"], item) =>
           qcPriority[item.status] > qcPriority[result] ? item.status : result,
-        'OK',
+        "OK",
       );
       return {
         component: PlAgCellStatusTag,
         params: { type },
       };
     },
-    headerName: 'Quality',
-    headerComponentParams: { type: 'Text' } satisfies PlAgHeaderComponentParams,
+    headerName: "Quality",
+    headerComponentParams: { type: "Text" } satisfies PlAgHeaderComponentParams,
     noGutters: true, // this means "no padding" i. e. --ag-cell-horizontal-padding: 0px & --ag-cell-vertical-padding: 0px
   }),
   createAgGridColDef<Result, string>({
-    colId: 'alignmentStats',
-    headerName: 'Alignments',
-    headerComponentParams: { type: 'Text' } satisfies PlAgHeaderComponentParams,
+    colId: "alignmentStats",
+    headerName: "Alignments",
+    headerComponentParams: { type: "Text" } satisfies PlAgHeaderComponentParams,
     flex: 1,
     cellStyle: {
-      '--ag-cell-horizontal-padding': '12px',
+      "--ag-cell-horizontal-padding": "12px",
     },
     cellRendererSelector: (cellData) => {
       const value = getAlignmentChartSettings(cellData.data?.alignReport);
@@ -134,12 +134,12 @@ const columnDefs: ColDef<Result>[] = [
     },
   }),
   createAgGridColDef<Result, string>({
-    colId: 'chainsStats',
-    headerName: 'Chains',
-    headerComponentParams: { type: 'Text' } satisfies PlAgHeaderComponentParams,
+    colId: "chainsStats",
+    headerName: "Chains",
+    headerComponentParams: { type: "Text" } satisfies PlAgHeaderComponentParams,
     flex: 1,
     cellStyle: {
-      '--ag-cell-horizontal-padding': '12px',
+      "--ag-cell-horizontal-padding": "12px",
       // '--ag-cell-horizontal-border': 'solid rgb(150, 150, 200);',
       // 'border-width': '0'
     },
@@ -151,7 +151,6 @@ const columnDefs: ColDef<Result>[] = [
       };
     },
   }),
-
 ];
 
 const gridOptions: GridOptions<Result> = {
@@ -192,24 +191,16 @@ const gridOptions: GridOptions<Result> = {
       />
     </div>
   </PlBlockPage>
-  <PlSlideModal
-    v-model="data.settingsOpen"
-    :shadow="true"
-    :close-on-outside-click="true"
-  >
+  <PlSlideModal v-model="data.settingsOpen" :shadow="true" :close-on-outside-click="true">
     <template #title>Settings</template>
     <SettingsPanel />
   </PlSlideModal>
-  <PlSlideModal
-    v-model="data.sampleReportOpen"
-    :close-on-outside-click="true"
-    width="80%"
-  >
+  <PlSlideModal v-model="data.sampleReportOpen" :close-on-outside-click="true" width="80%">
     <template #title>
       Results for
       {{
         (data.selectedSample ? app.model.outputs.sampleLabels?.[data.selectedSample] : undefined) ??
-          '...'
+        "..."
       }}
     </template>
     <SampleReportPanel v-model="data.selectedSample" />
