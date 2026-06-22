@@ -17,6 +17,8 @@ const data = reactive<{
 
 const app = useApp();
 
+const reactiveFileContent = ReactiveFileContent.useGlobal();
+
 const tabOptions: SimpleOption<ReportId>[] = [
   { value: "align", text: "Align" },
   { value: "assemble", text: "Assemble" },
@@ -31,7 +33,7 @@ const reportHandle = computed(() => {
 });
 
 const reportContent = computed(
-  () => ReactiveFileContent.getContentString(reportHandle.value)?.value,
+  () => reactiveFileContent.getContentString(reportHandle.value)?.value,
 );
 </script>
 

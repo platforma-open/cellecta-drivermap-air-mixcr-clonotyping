@@ -5,7 +5,7 @@ import {
   PlDropdown,
   PlDropdownMulti,
   PlDropdownRef,
-  PlTextField,
+  PlNumberField,
 } from "@platforma-sdk/ui-vue";
 import { useApp } from "../app";
 
@@ -18,16 +18,6 @@ function setInput(inputRef?: PlRef) {
       "DriverMap™ AIR Profiling - " +
       app.model.outputs.inputOptions?.find((o) => plRefsEqual(o.ref, inputRef))?.label;
   else app.model.ui.title = undefined;
-}
-
-function parseNumber(v: string): number {
-  const parsed = Number(v);
-
-  if (!Number.isFinite(parsed)) {
-    throw Error("Not a number");
-  }
-
-  return parsed;
 }
 
 const receptorOrChainsOptions = [
@@ -73,10 +63,9 @@ const presetOptions = [
   </PlDropdownMulti>
 
   <PlAccordionSection label="Advanced Settings">
-    <PlTextField
+    <PlNumberField
       v-model="app.model.args.limitInput"
-      :parse="parseNumber"
-      :clearable="() => undefined"
+      clearable
       label="Take only this number of reads into analysis"
     />
   </PlAccordionSection>

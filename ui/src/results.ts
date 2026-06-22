@@ -9,6 +9,8 @@ import { ReactiveFileContent } from "@platforma-sdk/ui-vue";
 import { computed } from "vue";
 import { useApp } from "./app";
 
+const reactiveFileContent = ReactiveFileContent.useGlobal();
+
 export type Result = {
   label: string;
   sampleId: string;
@@ -62,7 +64,7 @@ export const resultMap = computed(() => {
       const sampleId = qcData.key[0] as string;
       const r = resultMap.get(sampleId);
       if (!r || !qcData.value) continue;
-      r.qc = ReactiveFileContent.getContentJson(qcData.value.handle, Qc).value;
+      r.qc = reactiveFileContent.getContentJson(qcData.value.handle, Qc).value;
     }
   }
 
@@ -76,14 +78,14 @@ export const resultMap = computed(() => {
         switch (reportId) {
           case "align":
             // globally cached
-            r.alignReport = ReactiveFileContent.getContentJson(
+            r.alignReport = reactiveFileContent.getContentJson(
               report.value.handle,
               AlignReport,
             )?.value;
             break;
           case "assemble":
             // globally cached
-            r.assembleReport = ReactiveFileContent.getContentJson(
+            r.assembleReport = reactiveFileContent.getContentJson(
               report.value.handle,
               AssembleReport,
             )?.value;
