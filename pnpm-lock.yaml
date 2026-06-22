@@ -9,9 +9,6 @@ catalogs:
     '@changesets/cli':
       specifier: ^2.27.9
       version: 2.29.2
-    '@milaboratories/software-pframes-conv':
-      specifier: ^2.2.7
-      version: 2.2.7
     '@milaboratories/ts-builder':
       specifier: 1.5.2
       version: 1.5.2
@@ -30,9 +27,6 @@ catalogs:
     '@platforma-open/milaboratories.software-ptransform':
       specifier: ^1.6.6
       version: 1.6.6
-    '@platforma-open/milaboratories.software-small-binaries':
-      specifier: ^1.15.23
-      version: 1.15.23
     '@platforma-sdk/block-tools':
       specifier: 2.11.1
       version: 2.11.1
@@ -55,11 +49,11 @@ catalogs:
       specifier: 6.6.3
       version: 6.6.3
     ag-grid-enterprise:
-      specifier: ^33.1.1
-      version: 33.2.4
+      specifier: ~34.1.2
+      version: 34.1.2
     ag-grid-vue3:
-      specifier: ^33.1.1
-      version: 33.2.4
+      specifier: ~34.1.2
+      version: 34.1.2
     js-yaml:
       specifier: ^4.1.0
       version: 4.1.0
@@ -72,6 +66,9 @@ catalogs:
     vue:
       specifier: 3.5.24
       version: 3.5.24
+
+overrides:
+  '@platforma-open/milaboratories.mixcr-clonotyping-2.model>zod': 3.25.76
 
 importers:
 
@@ -190,10 +187,10 @@ importers:
         version: 24.5.2
       ag-grid-enterprise:
         specifier: 'catalog:'
-        version: 33.2.4
+        version: 34.1.2
       ag-grid-vue3:
         specifier: 'catalog:'
-        version: 33.2.4(vue@3.5.24(typescript@5.5.4))
+        version: 34.1.2(vue@3.5.24(typescript@5.5.4))
       typescript:
         specifier: '*'
         version: 5.5.4
@@ -223,18 +220,12 @@ importers:
         specifier: 'catalog:'
         version: 6.6.3
     devDependencies:
-      '@milaboratories/software-pframes-conv':
-        specifier: 'catalog:'
-        version: 2.2.7
       '@platforma-open/milaboratories.software-mixcr':
         specifier: 'catalog:'
         version: 4.7.0-233-develop
       '@platforma-open/milaboratories.software-ptransform':
         specifier: 'catalog:'
         version: 1.6.6
-      '@platforma-open/milaboratories.software-small-binaries':
-        specifier: 'catalog:'
-        version: 1.15.23
       '@platforma-sdk/tengo-builder':
         specifier: 'catalog:'
         version: 4.0.9
@@ -961,9 +952,6 @@ packages:
   '@milaboratories/resolve-helper@1.1.3':
     resolution: {integrity: sha512-38/dW/XRZQREOxAOOKtO0lzEWPCP/DH0qhB3q1kYcGoN++5V92/zbVwbYrMDeDcjTyo+D62iIep+sKXeWHa7Uw==}
 
-  '@milaboratories/software-pframes-conv@2.2.7':
-    resolution: {integrity: sha512-FFZRPP8C86cJdGbaj6t/FmHSfRyuSWnXw8d6UACtPLh7sQRRuwi95LBp808sPP5vqFWBHFijvuh0CtXdSrjZYA==}
-
   '@milaboratories/software-pframes-conv@2.2.9':
     resolution: {integrity: sha512-w+GaazDSqEgqYUJ38I5lgOsggyZJpcBVGvDMHIX1pyTdvPjWAOWu3mLkScaYuWeitFfh8aAedf5vrLqXtnX8bw==}
 
@@ -1546,59 +1534,20 @@ packages:
   '@platforma-open/milaboratories.software-ptransform@1.6.6':
     resolution: {integrity: sha512-J43RsEiEo98Hwb+ze1UO42gXa3VTDCqMdBLbkTZiEs5nOtnqetMKfFRcGcSn/uHlUAdkBLAQ6WmEtEIfAgaUcA==}
 
-  '@platforma-open/milaboratories.software-small-binaries.guided-command@1.1.1':
-    resolution: {integrity: sha512-UPhSOP43GAL+gQVPlE/2ymjuOiYVojhmDad1moS4SI+t6IDF9QgnAj5I7V8eP2P2x0oSY5apgjg4EeUiGBrIkw==}
-
   '@platforma-open/milaboratories.software-small-binaries.hello-world-py@1.0.10':
     resolution: {integrity: sha512-16BGRLIrsVW+YIaXwWLX6Nbm80PS5mQJEclHhjNbRrRTLHPaKI4RygZfBC0lLNzvHBiTXU4Qkh1+WmdovkshDg==}
-
-  '@platforma-open/milaboratories.software-small-binaries.hello-world-py@1.0.6':
-    resolution: {integrity: sha512-eYRjtkKkRFidVvsp3QEGpAOAaba15W0T7VrvM8X0QgNsHtSn1OYp7+THMqZf06zWbvJ1IVfjturQXUtpuv6UjQ==}
-
-  '@platforma-open/milaboratories.software-small-binaries.hello-world@1.1.1':
-    resolution: {integrity: sha512-XPf/+HeXgPMKJU/BdxxTMgV11LHyktm72Y2GWjqT2wa3ZYUeiwLuCvRHfgKIXtSC4qJnjDlgmdqQIzldnlWG6g==}
 
   '@platforma-open/milaboratories.software-small-binaries.hello-world@1.1.7':
     resolution: {integrity: sha512-CqXbfFld2l6Y/8rtcZXRPsa5kqNnaS3QWUxrcfMYwNxultbhLzjZGdqSR7ejV9xRWilXpeg6DdZJIKF3+KDH8g==}
 
-  '@platforma-open/milaboratories.software-small-binaries.java-stub@1.0.4':
-    resolution: {integrity: sha512-nr0H+TZDKUR7dpxY5Q5Gh1FOT9Jx4Sr0Uk6jO2I18jJaOPchEPY+gOxemPJO30SNkkkbQiIRBBJYF54tMFiesA==}
-
   '@platforma-open/milaboratories.software-small-binaries.line-counter@1.1.1':
     resolution: {integrity: sha512-3bqn2ZK/dV5IR0Zp678Ea9lGSHjLvfRv4lyRBYXZNO1mMWIlEhtT0bmn6FhNzBBj+MhTQfSRFnEsOejtfdN1Ew==}
-
-  '@platforma-open/milaboratories.software-small-binaries.mnz-client@1.6.1':
-    resolution: {integrity: sha512-4dJnBVFqxFgFznepUQAMJceWcJrGE2Ms5LH+2BMjG/qOFJpEAiWJlrjiobiapqf2jnJgxM1AcDVR9M67uGrySA==}
 
   '@platforma-open/milaboratories.software-small-binaries.mnz-client@1.6.5':
     resolution: {integrity: sha512-ZdVg77pZ0Hgvxdk+mYahEyPbcTzDyz6Y7qlm6A0rJw8WCYmDVkfLqctQj0QkTLHM76oSWOHJIgD07ZxORjjgwA==}
 
-  '@platforma-open/milaboratories.software-small-binaries.python-stub@1.0.4':
-    resolution: {integrity: sha512-5HjuYrvxvYNLo2M7EkhoQFlwPk6VxV2aoRY8PDU9cf0qyDIrdY6g/q4zRslZ6wWFhw/hTGsZ8CLXPGvdqiuCHw==}
-
-  '@platforma-open/milaboratories.software-small-binaries.read-with-sleep@1.1.1':
-    resolution: {integrity: sha512-6GFG8o+YzXngZNk9jyuBFgRCFybHZ67QHgpgtnwNXKWjaC627jEY9VxlmCtSQ7OL5V029wEern6QuNRoa0vGzQ==}
-
-  '@platforma-open/milaboratories.software-small-binaries.runenv-java-stub@1.0.6':
-    resolution: {integrity: sha512-KWbIs9QLBbhiy+IUwnlGdPXSr7Uhx51zePwkHclFwWAA8Pdj2eOXAN5Q+qFAb3pHWb84mBUlWNCu0BMxANKIJw==}
-
-  '@platforma-open/milaboratories.software-small-binaries.runenv-python-stub@1.0.7':
-    resolution: {integrity: sha512-F2qzS0bzcvMclW6dCiK/3y4qNwDrGdOqc4MsgZfOmMSte+TAny7ISvkJc1M4oiKsZ7e3SL9ALIG/l5vopVAEAQ==}
-
-  '@platforma-open/milaboratories.software-small-binaries.sleep@1.1.1':
-    resolution: {integrity: sha512-SuXYzYtYcd+PJtJwCtC/6m6qVT17RrIw5jkUfwfzTaPl8o7o7dEMLEQzkhCFc6rmUYqcyfyz4skxMNtSOl+QTA==}
-
-  '@platforma-open/milaboratories.software-small-binaries.small-asset@1.1.4':
-    resolution: {integrity: sha512-TH5wqnEdfAtzomwpUkJR9fNR548U9K5Wl8KrhkuGqTQh5yM66C5nCnvwUA/i+09WKdwCwDzSvs5reogV6Hqw5Q==}
-
-  '@platforma-open/milaboratories.software-small-binaries.table-converter@1.3.1':
-    resolution: {integrity: sha512-CFcYb/hbzQ1UiP4sMXnRUST+feUkQoRrc8/vXSaOfUZY0tKdEEJCas+huSZ04l2oUhMFAU2PSO8H91BSspfvQQ==}
-
   '@platforma-open/milaboratories.software-small-binaries.table-converter@1.3.5':
     resolution: {integrity: sha512-x6WOZ8S3uLXzmwliCF500hw7VQ4A9U3VBbESjJlPia26aU91FqB3ylKyH2fEyTiVw2wADlTYuui1tHX47iS5Lw==}
-
-  '@platforma-open/milaboratories.software-small-binaries@1.15.23':
-    resolution: {integrity: sha512-I1G2qEWALvNAJy9kOTXjryu0GvK+hvUCVPckNhGkFO/cGIsST7R7s9pm0exhG92PyuLFa5lwJFx/fgobqWUWNw==}
 
   '@platforma-open/milaboratories.software-small-binaries@2.1.1':
     resolution: {integrity: sha512-KN1PR7YgUUfx1dxh/TtcoWpSZbOXbRxXzQuJ505qHuXuE0spYwC7bXnvJsEYbEwRcPMa0foTrjBnPNORE4yr+Q==}
@@ -2500,52 +2449,26 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
-  ag-charts-community@11.2.4:
-    resolution: {integrity: sha512-L4DDGpCP1IVjjgacADRMPSucUiH7CU4nLJFFI/eWkv+ee0WOte7XIgIiwzUci+UD4IhLHu5zwbOoHdZ9LX/E5w==}
-
   ag-charts-community@12.1.2:
     resolution: {integrity: sha512-Z3oSsbIyAqaiB4PdnMQ2gt3s+oY19xTHJUee5TKjsTThX8wVX8PXRGMOZaFWbN/HNaZCWkUTgkuLrasw2w+x/w==}
-
-  ag-charts-core@11.2.4:
-    resolution: {integrity: sha512-RiN2GXSBuYBAGhbfxiQjhM+pDnJ+2iT/W0r/2KHBHXI8Bv89l+jYKBunb/4SqcP6/DBaxhh+yESk25dYj391Bg==}
 
   ag-charts-core@12.1.2:
     resolution: {integrity: sha512-9AfMX+HSpr4zmp88PBWcOqO9jW1HTKxC+b/7B/xYOE6K1hBFvnuLbqdeNGfGoiyWqw5TUlY1lirr/9xrFyZFsQ==}
 
-  ag-charts-enterprise@11.2.4:
-    resolution: {integrity: sha512-4msY1swe0GwEytQI9H3ANM+pMWVeAa8u8yGcZJ8kMzTFB3urNjXXGmYLZ7rQCiPfzLUuY25iGKf36ToUMHrrNA==}
-
   ag-charts-enterprise@12.1.2:
     resolution: {integrity: sha512-ac6AfLJ2OM/+V9VtCe6SHXdJLviDXhnU3iTtVnE21OvpBZ2ynl3C3v2kZDUQ0EdAkNK/SwWCHo7xaPrE2lbfIg==}
-
-  ag-charts-locale@11.2.4:
-    resolution: {integrity: sha512-hArufzKISb/5UJtIPfTKu3TvSQ3ZAuwMrOsn8F6I4rOwJnNxbZYeQvm2yiKXx9D7hMhr3d1lNZxNIlKOrMZY/w==}
 
   ag-charts-locale@12.1.2:
     resolution: {integrity: sha512-GFAq4KZit3CHT3Br/LGruas75HqsvV+VZV6qz5hLrmiovJSSVfzPirzf/hUGDTCHqIOS7CdxmpdKUu8pKv1LGw==}
 
-  ag-charts-types@11.2.4:
-    resolution: {integrity: sha512-a1aQjtQ9ZH+J8BF3YcWAIHUt9ZLiL9IVZ8R5h7z2CkTNu2TPq5UlsCcF0/YZKc1M8CM0CdSNLSGQuWUwDNxAcA==}
-
   ag-charts-types@12.1.2:
     resolution: {integrity: sha512-B5IEMzaDxpJRko9sREIBEZOn44tlMX353tMJ1RGYHZrjDFx4on/p6q3YxBvway3nViAM2POmFOS45+1fF9YC8g==}
-
-  ag-grid-community@33.2.4:
-    resolution: {integrity: sha512-7XT1+wxmMlMVXB27BJOzlft9ATB0C5HOJcCGMc8dCO2W17JXbNknVEEDGTBKoSvA4Cei8sARrRDxmPgY8mWopQ==}
 
   ag-grid-community@34.1.2:
     resolution: {integrity: sha512-PN79zG/tigZaVKkQZXaithLO3j4JWp+9CjqEFth6kFUwMJ0E6OcNzNtn4NFEKM38fEdpGsr+k+gFk5KUE2h5fA==}
 
-  ag-grid-enterprise@33.2.4:
-    resolution: {integrity: sha512-JFFm0d/7+cdTR/J0oMRwwKfFHII5xsYCw3t6ef1iQHjhpIR9H3vv6XVGL41aYvwuaQcZM4kDWZnwlVfjGFC47w==}
-
   ag-grid-enterprise@34.1.2:
     resolution: {integrity: sha512-B++4t4lDylXt6SfFvaNY6aswtzp/0oUwbaXLpXWJZQZlfyRb4u1e787NpISGaVVcGoHyAgYLvtNHJluVsnQikg==}
-
-  ag-grid-vue3@33.2.4:
-    resolution: {integrity: sha512-U5m4A9sc+jpoENwwl/AZ7r0053tbRvI39nRh55pYMJt6rrnotgUyJVHZfqJ6cExcSM3tqeW+vg1tMXGqoR4PNA==}
-    peerDependencies:
-      vue: ^3.5.0
 
   ag-grid-vue3@34.1.2:
     resolution: {integrity: sha512-ioBKNLENrtvorUsl/tbhMxjh3CxTukt4UoySmerDH88SE8E03UKk2enNOa4hMlTdbDCbc15FuwPEgh3bNI+0WA==}
@@ -4657,9 +4580,6 @@ packages:
     resolution: {integrity: sha512-zK7YHHz4ZXpW89AHXUPbQVGKI7uvkd3hzusTdotCg1UxyaVtg0zFJSTfW/Dq5f7OBBVnq6cZIaC8Ti4hb6dtCA==}
     engines: {node: '>= 14'}
 
-  zod@3.23.8:
-    resolution: {integrity: sha512-XBx9AXhXktjUqnepgTiE5flcKIYWi/rme0Eaj+5Y0lftuGBq+jyRu/md4WnuxqgP1ubdpNCsYEYPxrzVHD8d6g==}
-
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
@@ -6013,8 +5933,6 @@ snapshots:
 
   '@milaboratories/resolve-helper@1.1.3': {}
 
-  '@milaboratories/software-pframes-conv@2.2.7': {}
-
   '@milaboratories/software-pframes-conv@2.2.9': {}
 
   '@milaboratories/tengo-tester@1.6.4': {}
@@ -6535,7 +6453,7 @@ snapshots:
   '@platforma-open/milaboratories.mixcr-clonotyping-2.model@1.10.2':
     dependencies:
       '@platforma-sdk/model': 1.79.15
-      zod: 3.23.8
+      zod: 3.25.76
 
   '@platforma-open/milaboratories.runenv-python-3@1.1.16': {}
 
@@ -6551,54 +6469,15 @@ snapshots:
 
   '@platforma-open/milaboratories.software-ptransform@1.6.6': {}
 
-  '@platforma-open/milaboratories.software-small-binaries.guided-command@1.1.1': {}
-
   '@platforma-open/milaboratories.software-small-binaries.hello-world-py@1.0.10': {}
-
-  '@platforma-open/milaboratories.software-small-binaries.hello-world-py@1.0.6': {}
-
-  '@platforma-open/milaboratories.software-small-binaries.hello-world@1.1.1': {}
 
   '@platforma-open/milaboratories.software-small-binaries.hello-world@1.1.7': {}
 
-  '@platforma-open/milaboratories.software-small-binaries.java-stub@1.0.4': {}
-
   '@platforma-open/milaboratories.software-small-binaries.line-counter@1.1.1': {}
-
-  '@platforma-open/milaboratories.software-small-binaries.mnz-client@1.6.1': {}
 
   '@platforma-open/milaboratories.software-small-binaries.mnz-client@1.6.5': {}
 
-  '@platforma-open/milaboratories.software-small-binaries.python-stub@1.0.4': {}
-
-  '@platforma-open/milaboratories.software-small-binaries.read-with-sleep@1.1.1': {}
-
-  '@platforma-open/milaboratories.software-small-binaries.runenv-java-stub@1.0.6': {}
-
-  '@platforma-open/milaboratories.software-small-binaries.runenv-python-stub@1.0.7': {}
-
-  '@platforma-open/milaboratories.software-small-binaries.sleep@1.1.1': {}
-
-  '@platforma-open/milaboratories.software-small-binaries.small-asset@1.1.4': {}
-
-  '@platforma-open/milaboratories.software-small-binaries.table-converter@1.3.1': {}
-
   '@platforma-open/milaboratories.software-small-binaries.table-converter@1.3.5': {}
-
-  '@platforma-open/milaboratories.software-small-binaries@1.15.23':
-    dependencies:
-      '@platforma-open/milaboratories.software-small-binaries.guided-command': 1.1.1
-      '@platforma-open/milaboratories.software-small-binaries.hello-world': 1.1.1
-      '@platforma-open/milaboratories.software-small-binaries.hello-world-py': 1.0.6
-      '@platforma-open/milaboratories.software-small-binaries.java-stub': 1.0.4
-      '@platforma-open/milaboratories.software-small-binaries.mnz-client': 1.6.1
-      '@platforma-open/milaboratories.software-small-binaries.python-stub': 1.0.4
-      '@platforma-open/milaboratories.software-small-binaries.read-with-sleep': 1.1.1
-      '@platforma-open/milaboratories.software-small-binaries.runenv-java-stub': 1.0.6
-      '@platforma-open/milaboratories.software-small-binaries.runenv-python-stub': 1.0.7
-      '@platforma-open/milaboratories.software-small-binaries.sleep': 1.1.1
-      '@platforma-open/milaboratories.software-small-binaries.small-asset': 1.1.4
-      '@platforma-open/milaboratories.software-small-binaries.table-converter': 1.3.1
 
   '@platforma-open/milaboratories.software-small-binaries@2.1.1':
     dependencies:
@@ -7653,13 +7532,6 @@ snapshots:
 
   acorn@8.17.0: {}
 
-  ag-charts-community@11.2.4:
-    dependencies:
-      ag-charts-core: 11.2.4
-      ag-charts-locale: 11.2.4
-      ag-charts-types: 11.2.4
-    optional: true
-
   ag-charts-community@12.1.2:
     dependencies:
       ag-charts-core: 12.1.2
@@ -7667,20 +7539,9 @@ snapshots:
       ag-charts-types: 12.1.2
     optional: true
 
-  ag-charts-core@11.2.4:
-    dependencies:
-      ag-charts-types: 11.2.4
-    optional: true
-
   ag-charts-core@12.1.2:
     dependencies:
       ag-charts-types: 12.1.2
-    optional: true
-
-  ag-charts-enterprise@11.2.4:
-    dependencies:
-      ag-charts-community: 11.2.4
-      ag-charts-core: 11.2.4
     optional: true
 
   ag-charts-enterprise@12.1.2:
@@ -7689,30 +7550,14 @@ snapshots:
       ag-charts-core: 12.1.2
     optional: true
 
-  ag-charts-locale@11.2.4:
-    optional: true
-
   ag-charts-locale@12.1.2:
     optional: true
 
-  ag-charts-types@11.2.4: {}
-
   ag-charts-types@12.1.2: {}
-
-  ag-grid-community@33.2.4:
-    dependencies:
-      ag-charts-types: 11.2.4
 
   ag-grid-community@34.1.2:
     dependencies:
       ag-charts-types: 12.1.2
-
-  ag-grid-enterprise@33.2.4:
-    dependencies:
-      ag-grid-community: 33.2.4
-    optionalDependencies:
-      ag-charts-community: 11.2.4
-      ag-charts-enterprise: 11.2.4
 
   ag-grid-enterprise@34.1.2:
     dependencies:
@@ -7720,11 +7565,6 @@ snapshots:
     optionalDependencies:
       ag-charts-community: 12.1.2
       ag-charts-enterprise: 12.1.2
-
-  ag-grid-vue3@33.2.4(vue@3.5.24(typescript@5.5.4)):
-    dependencies:
-      ag-grid-community: 33.2.4
-      vue: 3.5.24(typescript@5.5.4)
 
   ag-grid-vue3@34.1.2(vue@3.5.24(typescript@5.5.4)):
     dependencies:
@@ -9763,8 +9603,6 @@ snapshots:
       archiver-utils: 5.0.2
       compress-commons: 6.0.2
       readable-stream: 4.7.0
-
-  zod@3.23.8: {}
 
   zod@3.25.76: {}
 
