@@ -12,12 +12,12 @@ import { useApp } from "../app";
 const app = useApp();
 
 function setInput(inputRef?: PlRef) {
-  app.model.args.input = inputRef;
+  app.model.data.input = inputRef;
   if (inputRef)
-    app.model.ui.title =
+    app.model.data.title =
       "DriverMap™ AIR Profiling - " +
       app.model.outputs.inputOptions?.find((o) => plRefsEqual(o.ref, inputRef))?.label;
-  else app.model.ui.title = undefined;
+  else app.model.data.title = undefined;
 }
 
 const receptorOrChainsOptions = [
@@ -45,17 +45,17 @@ const presetOptions = [
 
 <template>
   <PlDropdownRef
-    v-model="app.model.args.input"
+    v-model="app.model.data.input"
     :options="app.model.outputs.inputOptions"
     label="Select dataset"
     clearable
     @update:model-value="setInput"
   />
 
-  <PlDropdown v-model="app.model.args.preset" :options="presetOptions" label="Preset" required />
+  <PlDropdown v-model="app.model.data.preset" :options="presetOptions" label="Preset" required />
 
   <PlDropdownMulti
-    v-model="app.model.args.chains"
+    v-model="app.model.data.chains"
     label="Receptors"
     :options="receptorOrChainsOptions"
   >
@@ -64,7 +64,7 @@ const presetOptions = [
 
   <PlAccordionSection label="Advanced Settings">
     <PlNumberField
-      v-model="app.model.args.limitInput"
+      v-model="app.model.data.limitInput"
       clearable
       label="Take only this number of reads into analysis"
     />

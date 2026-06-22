@@ -1,6 +1,12 @@
 import type { InferOutputsType, PlRef } from "@platforma-sdk/model";
-import { BlockModel, isPColumnSpec, parseResourceMap } from "@platforma-sdk/model";
+import {
+  BlockModelV3,
+  DataModelBuilder,
+  isPColumnSpec,
+  parseResourceMap,
+} from "@platforma-sdk/model";
 
+/** Workflow-relevant args projected out of {@link BlockData} by `.args`. */
 export type BlockArgs = {
   input?: PlRef;
   preset?: string;
@@ -8,7 +14,16 @@ export type BlockArgs = {
   chains: string[];
 };
 
-export type UiState = {
+/** Legacy V1 UI-state shape — consumed only by the legacy upgrader. */
+export type LegacyUiState = {
+  title?: string;
+};
+
+/**
+ * Unified V3 block data: the workflow args plus the UI-only block title.
+ * `title` is UI-only and never reaches the workflow (stripped in `.args`).
+ */
+export type BlockData = BlockArgs & {
   title?: string;
 };
 
@@ -17,16 +32,29 @@ export const ProgressPrefix = "[==PROGRESS==]";
 export const ProgressPattern =
   /(?<stage>[^:]*):(?: *(?<progress>[0-9.]+)%)?(?: *ETA: *(?<eta>.+))?/;
 
-export const model = BlockModel.create()
-
-  .withArgs<BlockArgs>({
+const dataModel = new DataModelBuilder()
+  .from<BlockData>("v1")
+  .upgradeLegacy<BlockArgs, LegacyUiState>(({ args, uiState }) => ({
+    ...args,
+    title: uiState.title,
+  }))
+  .init(() => ({
     chains: ["IG", "TCRAB", "TCRGD"],
-  })
-  .withUiState<UiState>({
     title: "DriverMap™ AIR Profiling",
-  })
+  }));
 
-  .argsValid((ctx) => ctx.args.input !== undefined && ctx.args.preset !== undefined)
+export const platforma = BlockModelV3.create(dataModel)
+
+  .args<BlockArgs>((data) => {
+    if (data.input === undefined) throw new Error("Input dataset is required");
+    if (data.preset === undefined) throw new Error("Preset is required");
+    return {
+      input: data.input,
+      preset: data.preset,
+      limitInput: data.limitInput,
+      chains: data.chains,
+    };
+  })
 
   .retentiveOutput("inputOptions", (ctx) => {
     return ctx.resultPool.getOptions((v) => {
@@ -54,7 +82,7 @@ export const model = BlockModel.create()
   })
 
   .output("sampleLabels", (ctx): Record<string, string> | undefined => {
-    const inputRef = ctx.args.input;
+    const inputRef = ctx.data.input;
     if (inputRef === undefined) return undefined;
 
     const spec = ctx.resultPool.getPColumnSpecByRef(inputRef);
@@ -85,10 +113,10 @@ export const model = BlockModel.create()
 
   .output("isRunning", (ctx) => ctx.outputs?.getIsReadyOrError() === false)
 
-  .sections((_) => [{ type: "link", href: "/", label: "Main" }])
+  .sections((_ctx) => [{ type: "link", href: "/", label: "Main" }])
 
-  .title((ctx) => ctx.uiState.title ?? "DriverMap™ AIR Clonotyping")
+  .title((ctx) => ctx.data.title ?? "DriverMap™ AIR Clonotyping")
 
   .done();
 
-export type BlockOutputs = InferOutputsType<typeof model>;
+export type BlockOutputs = InferOutputsType<typeof platforma>;
