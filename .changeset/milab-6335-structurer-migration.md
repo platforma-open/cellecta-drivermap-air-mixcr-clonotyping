@@ -4,7 +4,7 @@
 '@platforma-open/cellecta.drivermap-mixcr-clonotyping.workflow': patch
 '@platforma-open/cellecta.drivermap-mixcr-clonotyping.vbc-filtering': patch
 '@platforma-open/cellecta.drivermap-mixcr-clonotyping.vbc-normalization': patch
-'@platforma-open/milaboratories.mixcr-clonotyping-2.hash-column': patch
+'@platforma-open/cellecta.drivermap-mixcr-clonotyping.hash-column': patch
 ---
 
 Migrate block onto the block-tools structurer with a full SDK upgrade

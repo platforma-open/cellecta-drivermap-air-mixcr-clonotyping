@@ -11,7 +11,7 @@ self.defineOutputs(["tsv"])
 
 mixcrSw := assets.importSoftware("@platforma-open/milaboratories.software-mixcr:low-memory")
 ptransformSw := assets.importSoftware("@platforma-open/milaboratories.software-ptransform:main")
-hashColumnSw := assets.importSoftware("@platforma-open/milaboratories.mixcr-clonotyping-2.hash-column:main")
+hashColumnSw := assets.importSoftware("@platforma-open/cellecta.drivermap-mixcr-clonotyping.hash-column:main")
 
 self.body(func(inputs) {
 	clnsFile := inputs.__value__

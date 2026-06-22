@@ -207,15 +207,15 @@ importers:
 
   workflow:
     dependencies:
+      '@platforma-open/cellecta.drivermap-mixcr-clonotyping.hash-column':
+        specifier: workspace:*
+        version: link:../software/hash-column
       '@platforma-open/cellecta.drivermap-mixcr-clonotyping.vbc-filtering':
         specifier: workspace:*
         version: link:../software/vbc-filtering
       '@platforma-open/cellecta.drivermap-mixcr-clonotyping.vbc-normalization':
         specifier: workspace:*
         version: link:../software/vbc-normalization
-      '@platforma-open/milaboratories.mixcr-clonotyping-2.hash-column':
-        specifier: workspace:*
-        version: link:../software/hash-column
       '@platforma-sdk/workflow-tengo':
         specifier: 'catalog:'
         version: 6.6.3
