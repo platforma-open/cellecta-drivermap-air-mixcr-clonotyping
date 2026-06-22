@@ -1,6 +1,6 @@
-import { model } from '@platforma-open/cellecta.drivermap-mixcr-clonotyping.model';
-import { defineApp } from '@platforma-sdk/ui-vue';
-import MainPage from './pages/MainPage.vue';
+import { model } from "@platforma-open/cellecta.drivermap-mixcr-clonotyping.model";
+import { defineApp } from "@platforma-sdk/ui-vue";
+import MainPage from "./pages/MainPage.vue";
 
 export const sdkPlugin = defineApp(model, (app) => {
   return {
@@ -9,7 +9,7 @@ export const sdkPlugin = defineApp(model, (app) => {
     },
     showErrorsNotification: true,
     routes: {
-      '/': () => MainPage,
+      "/": () => MainPage,
     },
   };
 });

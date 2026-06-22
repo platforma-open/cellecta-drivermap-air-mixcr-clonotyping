@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import AlignmentsChart from '../charts/AlignmentsChart.vue';
-import ChainsChart from '../charts/ChainsChart.vue';
-import type { Result } from '../results';
+import AlignmentsChart from "../charts/AlignmentsChart.vue";
+import ChainsChart from "../charts/ChainsChart.vue";
+import type { Result } from "../results";
 
 defineProps<{
   sampleData: Result;

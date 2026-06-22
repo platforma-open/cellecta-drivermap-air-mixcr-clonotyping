@@ -1,21 +1,26 @@
 {
   "name": "@platforma-open/cellecta.drivermap-mixcr-clonotyping",
   "version": "1.1.1",
-  "scripts": {
-    "build": "rm -rf block-pack/* && block-tools pack",
-    "mark-stable": "block-tools mark-stable -r 's3://milab-euce1-prod-pkgs-s3-block-registry/pub/releases/?region=eu-central-1'",
-    "prepublishOnly": "block-tools pack && block-tools publish -r 's3://milab-euce1-prod-pkgs-s3-block-registry/pub/releases/?region=eu-central-1'"
-  },
   "files": [
     "index.d.ts",
     "index.js"
   ],
+  "scripts": {
+    "build": "shx rm -rf ./block-pack && block-tools pack",
+    "mark-stable": "block-tools mark-stable -r 's3://milab-euce1-prod-pkgs-s3-block-registry/pub/releases/?region=eu-central-1'",
+    "prepublishOnly": "block-tools pack && block-tools publish -r 's3://milab-euce1-prod-pkgs-s3-block-registry/pub/releases/?region=eu-central-1'",
+    "do-pack": "shx rm -f *.tgz && block-tools pack && pnpm pack && shx mv *.tgz package.tgz"
+  },
   "dependencies": {
-    "@platforma-open/cellecta.drivermap-mixcr-clonotyping.workflow": "workspace:*",
     "@platforma-open/cellecta.drivermap-mixcr-clonotyping.model": "workspace:*",
     "@platforma-open/cellecta.drivermap-mixcr-clonotyping.ui": "workspace:*",
-    "@platforma-sdk/block-tools": "catalog:"
+    "@platforma-open/cellecta.drivermap-mixcr-clonotyping.workflow": "workspace:*"
   },
+  "devDependencies": {
+    "@platforma-sdk/block-tools": "catalog:",
+    "shx": "catalog:"
+  },
+  "packageManager": "pnpm@9.12.0",
   "block": {
     "components": {
       "workflow": "@platforma-open/cellecta.drivermap-mixcr-clonotyping.workflow/dist/tengo/tpl/main.plj.gz",
@@ -42,9 +47,5 @@
         "logo": "file:../logos/organization-logo.png"
       }
     }
-  },
-  "devDependencies": {
-    "@platforma-sdk/block-tools": "catalog:"
-  },
-  "packageManager": "pnpm@9.12.0"
+  }
 }

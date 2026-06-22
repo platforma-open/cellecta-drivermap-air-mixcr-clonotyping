@@ -1,13 +1,12 @@
-import type { AlignReport } from '@platforma-open/milaboratories.mixcr-clonotyping-2.model';
-import { AlignmentChannelLabels, extractAlignmentChannels } from '@platforma-open/milaboratories.mixcr-clonotyping-2.model';
-import type {
-  Color,
-} from '@platforma-sdk/ui-vue';
+import type { AlignReport } from "@platforma-open/milaboratories.mixcr-clonotyping-2.model";
 import {
-  Gradient,
-} from '@platforma-sdk/ui-vue';
-import type { Ref } from 'vue';
-import { computed, unref } from 'vue';
+  AlignmentChannelLabels,
+  extractAlignmentChannels,
+} from "@platforma-open/milaboratories.mixcr-clonotyping-2.model";
+import type { Color } from "@platforma-sdk/ui-vue";
+import { Gradient } from "@platforma-sdk/ui-vue";
+import type { Ref } from "vue";
+import { computed, unref } from "vue";
 
 type Category = keyof typeof AlignmentChannelLabels;
 
@@ -29,9 +28,9 @@ export function getAlignmentChartSettings(alignReport: AlignReport | undefined) 
 
   // Note: I'll create a "Color Palette" page in the ui-examples block to make it clear how to choose colors
 
-  const viridis = Gradient('viridis');
+  const viridis = Gradient("viridis");
 
-  const magma = Gradient('magma');
+  const magma = Gradient("magma");
 
   const categoryColors = {
     Success: viridis.getNthOf(2, 5),
@@ -47,14 +46,17 @@ export function getAlignmentChartSettings(alignReport: AlignReport | undefined) 
   } satisfies Record<Category, Color>;
 
   return {
-    title: 'Alignments',
+    title: "Alignments",
     data: data.map(({ category, value }) => {
       const color = categoryColors[category];
       return {
         label: AlignmentChannelLabels[category],
         value,
         color,
-        description: [AlignmentChannelLabels[category], 'Fraction:' + (Math.round(value * 100 / total)) + '%'].join('\n'),
+        description: [
+          AlignmentChannelLabels[category],
+          "Fraction:" + Math.round((value * 100) / total) + "%",
+        ].join("\n"),
       };
     }),
   };
