@@ -11,7 +11,7 @@
   "dependencies": {
     "@platforma-open/cellecta.drivermap-mixcr-clonotyping.vbc-filtering": "workspace:*",
     "@platforma-open/cellecta.drivermap-mixcr-clonotyping.vbc-normalization": "workspace:*",
-    "@platforma-open/milaboratories.mixcr-clonotyping-2.hash-column": "workspace:*",
+    "@platforma-open/cellecta.drivermap-mixcr-clonotyping.hash-column": "workspace:*",
     "@platforma-sdk/workflow-tengo": "catalog:"
   },
   "devDependencies": {
