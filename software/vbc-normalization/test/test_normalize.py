@@ -9,10 +9,13 @@ Encodes:
   - per-clone `templateEstimate` matches upstream main (incl. the zero-estimate drop),
   - our output additionally carries `templateEstimateFraction` (required by the block's
     downstream xsv import — upstream main does not compute it),
-  - a NaN normFactor yields `templateEstimate = "NA"` (not a crash).
+  - a NaN normFactor yields the literal `templateEstimate = "NA"` (not a crash).
 
 Expected RED against the current `normalize.py` (uses `ceil(x/f)`, no zero-drop, no NA
 handling) and GREEN once Task 3 ports it.
+
+Note on reading NA: the quantified TSV stores the literal string "NA"; pandas would coerce
+it to NaN on read, so the NA test reads with `na_filter=False` to compare the literal.
 """
 import pathlib
 import shutil
@@ -20,7 +23,6 @@ import subprocess
 import sys
 
 import pandas as pd
-import pytest
 
 from conftest import REF_FILTER, REF_NORM
 
@@ -38,7 +40,11 @@ def _ref_filter(fixture, d, sample="s"):
 
 
 def _run_pair(fixtures, tmp_path, name, sample="s"):
-    """Produce a shared (maximas, filtered) input, run ref + our normalize, return (ours, ref)."""
+    """Produce a shared (maximas, filtered) input, run ref + our normalize.
+
+    Returns (our_output_path, ref_quantified_path) so each test reads with the dtype
+    handling it needs (numeric vs literal-"NA").
+    """
     refdir = tmp_path / "refdir"
     refdir.mkdir()
     maximas, filtered = _ref_filter(fixtures[name], refdir, sample)
@@ -55,7 +61,7 @@ def _run_pair(fixtures, tmp_path, name, sample="s"):
         check=True,
         cwd=refdir,
     )
-    ref = pd.read_csv(refdir / f"{sample}.clones_ALL.quantified.tsv", sep="\t")
+    ref_out = refdir / f"{sample}.clones_ALL.quantified.tsv"
 
     # ours on the SAME maximas + filtered table
     our_out = tmp_path / "ours.tsv"
@@ -64,13 +70,14 @@ def _run_pair(fixtures, tmp_path, name, sample="s"):
         check=True,
         cwd=tmp_path,
     )
-    ours = pd.read_csv(our_out, sep="\t")
-    return ours, ref
+    return our_out, ref_out
 
 
 def test_template_estimate_matches_main(fixtures, tmp_path):
     """clones_main: templateEstimate matches main (floor+0.5, zero-drop); fraction emitted."""
-    ours, ref = _run_pair(fixtures, tmp_path, "clones_main")
+    our_out, ref_out = _run_pair(fixtures, tmp_path, "clones_main")
+    ours = pd.read_csv(our_out, sep="\t")
+    ref = pd.read_csv(ref_out, sep="\t")
 
     assert "templateEstimate" in ours.columns
     assert "templateEstimateFraction" in ours.columns, \
@@ -87,11 +94,15 @@ def test_template_estimate_matches_main(fixtures, tmp_path):
 
 
 def test_nan_normfactor_yields_na(fixtures, tmp_path):
-    """clones_no_norm: NaN normFactor → templateEstimate == 'NA' (not a crash)."""
-    ours, ref = _run_pair(fixtures, tmp_path, "clones_no_norm")
+    """clones_no_norm: NaN normFactor → literal templateEstimate == 'NA' (not a crash)."""
+    our_out, ref_out = _run_pair(fixtures, tmp_path, "clones_no_norm")
+    # read with na_filter=False so the literal "NA" string is preserved (not coerced to NaN)
+    ours = pd.read_csv(our_out, sep="\t", na_filter=False, dtype=str)
+    ref = pd.read_csv(ref_out, sep="\t", na_filter=False, dtype=str)
 
     assert "templateEstimateFraction" in ours.columns
-    assert (ours["templateEstimate"].astype(str) == "NA").all(), \
-        "NaN normFactor must yield templateEstimate == 'NA' for every clone"
+    assert (ours["templateEstimate"] == "NA").all(), \
+        "NaN normFactor must yield literal templateEstimate == 'NA' for every clone"
+    assert (ours["templateEstimateFraction"] == "NA").all()
     # upstream also marks every clone NA in this case
-    assert (ref["templateEstimate"].astype(str) == "NA").all()
+    assert (ref["templateEstimate"] == "NA").all()
