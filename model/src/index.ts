@@ -113,6 +113,23 @@ export const platforma = BlockModelV3.create(dataModel)
 
   .output("isRunning", (ctx) => ctx.outputs?.getIsReadyOrError() === false)
 
+  // Block-level error signal: true once any workflow output has settled into an
+  // error — a failed clone export or VBC Python step after MiXCR succeeded
+  // (surfaces on the `clones` p-frame, built from the VBC outputs), or MiXCR
+  // itself failing (surfaces on the mixcr outputs). `isRunning` alone cannot tell
+  // success from failure, because `getIsReadyOrError()` flips to `true` on both;
+  // the results table needs this to avoid a green "Done" on a failed run. The keys
+  // are the resolvable `ctx.outputs` fields from `main.tpl.tengo` (`clones` =
+  // `exportFrame` of the clonotypes frame).
+  .output("isErrored", (ctx): boolean => {
+    const outputs = ctx.outputs;
+    if (outputs === undefined) return false;
+    for (const key of ["clones", "clns", "qc", "logs", "reports"]) {
+      if (outputs.resolve(key)?.getError() !== undefined) return true;
+    }
+    return false;
+  })
+
   .sections((_ctx) => [{ type: "link", href: "/", label: "Main" }])
 
   .title((ctx) => ctx.data.title ?? "DriverMap™ AIR Clonotyping")

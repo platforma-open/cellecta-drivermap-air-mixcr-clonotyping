@@ -31,6 +31,10 @@ export const resultMap = computed(() => {
   // Block-level run state: true until the whole workflow (MiXCR + clone export +
   // the VBC Python step) finishes — not just MiXCR.
   const blockRunning = app.model.outputs.isRunning;
+  // Block-level error state: true once a workflow output has settled into an
+  // error. `blockRunning` goes false on both success and failure, so without
+  // this a failed post-MiXCR step would show a green "Done".
+  const blockErrored = app.model.outputs.isErrored;
 
   const resultMap = new Map<string, Result>();
 
@@ -112,16 +116,21 @@ export const resultMap = computed(() => {
   }
 
   // Phase-aware status. MiXCR emits progress only while its log is live; once it
-  // closes, clone export and the VBC Python step still run — tracked by the
-  // block-level `isRunning`. Report "Done" only when the whole block has
-  // finished, so the post-MiXCR phase shows "Processing clonotypes" instead of a
-  // premature "Done".
+  // closes, clone export and the VBC Python step still run — tracked block-wide
+  // by `isRunning` (there is no per-sample post-MiXCR signal, and the by-clone-key
+  // aggregation spans all samples, so a sample's results aren't final until the
+  // whole block finishes). So once a sample's MiXCR log closes it is:
+  //   - "Error" if the block has settled into a failure (never a false "Done"),
+  //   - "Processing clonotypes" while the block is still running,
+  //   - "Done" only when the whole block has finished successfully.
   for (const r of resultMap.values()) {
     const logLive = mixcrLogLive.get(r.sampleId);
     if (logLive === undefined) {
       r.progress = blockRunning ? "Queued" : "Not started";
     } else if (logLive) {
       r.progress = mixcrProgress.get(r.sampleId) ?? "Running";
+    } else if (blockErrored) {
+      r.progress = "Error";
     } else {
       r.progress = blockRunning ? "Processing clonotypes" : "Done";
     }
