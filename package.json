@@ -17,6 +17,7 @@
     "check": "turbo run check",
     "test:dry-run": "env PL_PKG_DEV=local turbo run test --dry-run=json",
     "do-pack": "turbo run do-pack",
+    "software:reqs": "turbo run software:reqs",
     "upgrade-sdk": "block-tools structure refresh --update-deps-only && pnpm i && block-tools structure refresh && pnpm i && pnpm fmt"
   },
   "devDependencies": {

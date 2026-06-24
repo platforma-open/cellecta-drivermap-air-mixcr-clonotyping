@@ -20,20 +20,21 @@ The KDE thresholding (`find_kde_mimima_threshold`) is upstream main's robust ver
 returns a tuple on every path (degenerate bins fall back to `default_low_thresh`), so the
 `cannot unpack non-iterable NoneType` crash of the old fork cannot recur.
 """
+
 import argparse
 import os
 import sys
 
 import numpy as np
 import pandas as pd
-from sklearn.neighbors import KernelDensity
 from scipy.signal import argrelextrema
+from sklearn.neighbors import KernelDensity
 
 
 def qc_mixcr_output(input_file):
     """Check MiXCR output quality. Returns True if there are enough clonotypes to filter."""
     print("Running clonotype qc...")
-    df = pd.read_csv(input_file, sep='\t', low_memory=False)
+    df = pd.read_csv(input_file, sep="\t", low_memory=False)
     clonotype_count = df.shape[0]
     if clonotype_count < 1000:
         return False
@@ -43,27 +44,29 @@ def qc_mixcr_output(input_file):
 def barcode_hopping_filter(input_file, percentage, mode="bulk"):
     """Remove VBCs with low reads relative to other VBCs of the same clonotype."""
     print("Running barcode hopping filtering...")
-    df = pd.read_csv(input_file, sep='\t', low_memory=False)
+    df = pd.read_csv(input_file, sep="\t", low_memory=False)
     if mode == "single_cell":
-        group_cols = ['cloneId', 'tagValueMIWELLNAME']
+        group_cols = ["cloneId", "tagValueMIWELLNAME"]
     else:
-        group_cols = ['cloneId']
+        group_cols = ["cloneId"]
     # Maximum read count per group
-    df['group_max'] = df.groupby(group_cols)['readCount'].transform('max')
+    df["group_max"] = df.groupby(group_cols)["readCount"].transform("max")
 
     # Keep rows with readCount >= fraction_threshold of the group maximum
     fraction_threshold = percentage / 100
-    filtered_df = df[df['readCount'] >= fraction_threshold * df['group_max']].copy()
-    filtered_df.drop(columns=['group_max'], inplace=True)
+    filtered_df = df[df["readCount"] >= fraction_threshold * df["group_max"]].copy()
+    filtered_df.drop(columns=["group_max"], inplace=True)
 
     original_rows = df.shape[0]
     filtered_rows = filtered_df.shape[0]
-    original_rows_readSum = int(df['readCount'].sum())
-    filtered_rows_readSum = int(filtered_df['readCount'].sum())
+    original_rows_readSum = int(df["readCount"].sum())
+    filtered_rows_readSum = int(filtered_df["readCount"].sum())
     print(f"Original number of rows: {original_rows:,}")
     print(f"Final number of rows after barcode hopping filtering: {filtered_rows:,}")
-    print(f"Reads removed: {original_rows_readSum - filtered_rows_readSum:,} "
-          f"({(original_rows_readSum - filtered_rows_readSum)/original_rows_readSum:.1%})")
+    print(
+        f"Reads removed: {original_rows_readSum - filtered_rows_readSum:,} "
+        f"({(original_rows_readSum - filtered_rows_readSum) / original_rows_readSum:.1%})"
+    )
     print()
     return filtered_df
 
@@ -78,18 +81,16 @@ def find_kde_mimima_threshold(data, barcode_count, default_low_thresh, min_valle
     `default_low_thresh` — the function never returns None.
     """
     if len(data) < 10:
-        return (default_low_thresh, float('nan'), float('nan'),
-                float('nan'), float('nan'), float('nan'))
+        return (default_low_thresh, float("nan"), float("nan"), float("nan"), float("nan"), float("nan"))
 
     data_array = np.log10(data[data > 0].values).reshape(-1, 1)
 
     # Silverman's rule-of-thumb bandwidth
     n = len(data_array)
     sigma = np.std(data_array, ddof=1)
-    bandwidth = 1.06 * sigma * (n ** (-1/5))
+    bandwidth = 1.06 * sigma * (n ** (-1 / 5))
     if bandwidth == 0 or np.isnan(bandwidth):
-        return (default_low_thresh, float('nan'), float('nan'),
-                float('nan'), float('nan'), float('nan'))
+        return (default_low_thresh, float("nan"), float("nan"), float("nan"), float("nan"), float("nan"))
 
     kde = KernelDensity(bandwidth=bandwidth)
     kde.fit(data_array)
@@ -100,8 +101,7 @@ def find_kde_mimima_threshold(data, barcode_count, default_low_thresh, min_valle
     maxima = argrelextrema(log_dens, np.greater)[0]
 
     if len(maxima) == 0:
-        return (default_low_thresh, float('nan'), float('nan'),
-                float('nan'), float('nan'), float('nan'))
+        return (default_low_thresh, float("nan"), float("nan"), float("nan"), float("nan"), float("nan"))
 
     if len(maxima) == 1:
         left_max = 0  # first peak treated as non-existent at 0
@@ -109,13 +109,23 @@ def find_kde_mimima_threshold(data, barcode_count, default_low_thresh, min_valle
         between_minima = minima[(minima > left_max) & (minima < right_max)]
         if between_minima.size > 0:
             selected_min = between_minima[np.argmin(log_dens[between_minima])]
-            return (10**x[selected_min][0], 10**x[left_max][0], 10**x[right_max][0],
-                    np.exp(log_dens[selected_min]), np.exp(log_dens[left_max]),
-                    np.exp(log_dens[right_max]))
+            return (
+                10 ** x[selected_min][0],
+                10 ** x[left_max][0],
+                10 ** x[right_max][0],
+                np.exp(log_dens[selected_min]),
+                np.exp(log_dens[left_max]),
+                np.exp(log_dens[right_max]),
+            )
         # unlikely (a maximum implies a low point) -> fall back to default
-        return (default_low_thresh, 10**x[left_max][0], 10**x[right_max][0],
-                np.exp(log_dens[default_low_thresh]), np.exp(log_dens[left_max]),
-                np.exp(log_dens[right_max]))
+        return (
+            default_low_thresh,
+            10 ** x[left_max][0],
+            10 ** x[right_max][0],
+            np.exp(log_dens[default_low_thresh]),
+            np.exp(log_dens[left_max]),
+            np.exp(log_dens[right_max]),
+        )
 
     if len(maxima) == 2:
         sorted_maxima = maxima[np.argsort(-log_dens[maxima])]
@@ -157,47 +167,54 @@ def find_kde_mimima_threshold(data, barcode_count, default_low_thresh, min_valle
     peak_max_lower = min(left_peak, right_peak)
     relative_depth = abs((peak_max_lower - min_log_dens) / peak_max_lower)
     if relative_depth >= min_valley_depth:
-        return (10**x[selected_min][0], 10**x[left_max][0], 10**x[right_max][0],
-                np.exp(log_dens[selected_min]), np.exp(log_dens[left_max]),
-                np.exp(log_dens[right_max]))
+        return (
+            10 ** x[selected_min][0],
+            10 ** x[left_max][0],
+            10 ** x[right_max][0],
+            np.exp(log_dens[selected_min]),
+            np.exp(log_dens[left_max]),
+            np.exp(log_dens[right_max]),
+        )
     else:
         zero_left_max = 0
-        return (default_low_thresh, zero_left_max, 10**x[right_max][0],
-                np.exp(log_dens[default_low_thresh]), np.exp(log_dens[zero_left_max]),
-                np.exp(log_dens[right_max]))
+        return (
+            default_low_thresh,
+            zero_left_max,
+            10 ** x[right_max][0],
+            np.exp(log_dens[default_low_thresh]),
+            np.exp(log_dens[zero_left_max]),
+            np.exp(log_dens[right_max]),
+        )
 
 
-def is_normalization_unreliable(nVBC, clone_total_reads, thresholds, thresholds_kde_values,
-                                right_maxes, right_maxes_kde_values):
+def is_normalization_unreliable(
+    nVBC, clone_total_reads, thresholds, thresholds_kde_values, right_maxes, right_maxes_kde_values
+):
     """Return True if the normalization threshold for VBC bin `nVBC` looks unreliable."""
     unreliable_norm_flag = False
     print(f"Checking reliability of normalization for VBC = {nVBC}...")
 
-    vbc_reads = clone_total_reads[clone_total_reads['barcode_count'] == nVBC]['readCount']
+    vbc_reads = clone_total_reads[clone_total_reads["barcode_count"] == nVBC]["readCount"]
     vbc_thresh = thresholds.get(nVBC, None)
     vbc_thresh_kde_value = thresholds_kde_values.get(nVBC, None)
     vbc_peak = right_maxes.get(nVBC, None)
     vbc_peak_kde_values = right_maxes_kde_values.get(nVBC, None)
 
-    min_vbc_points = 10        # minimum data points for a reliable bin
-    min_peak_distance = 2      # minimum fold distance between threshold and 2nd peak
-    min_peak_height_diff = 2   # minimum KDE fold height difference
+    min_vbc_points = 10  # minimum data points for a reliable bin
+    min_peak_distance = 2  # minimum fold distance between threshold and 2nd peak
+    min_peak_height_diff = 2  # minimum KDE fold height difference
 
-    if (np.isnan(vbc_thresh) or np.isnan(vbc_thresh_kde_value)
-            or np.isnan(vbc_peak) or np.isnan(vbc_peak_kde_values)):
+    if np.isnan(vbc_thresh) or np.isnan(vbc_thresh_kde_value) or np.isnan(vbc_peak) or np.isnan(vbc_peak_kde_values):
         print("WARNING: NaN value for either threshold or right max peak.")
         unreliable_norm_flag = True
 
     num_above_thresh = (vbc_reads > vbc_thresh).sum()
     if num_above_thresh < min_vbc_points:
-        print("WARNING: Too few data points in VBC bin passing threshold. "
-              "Normalization may be unreliable.")
+        print("WARNING: Too few data points in VBC bin passing threshold. Normalization may be unreliable.")
         unreliable_norm_flag = True
 
-    if (vbc_thresh * min_peak_distance > vbc_peak
-            or vbc_thresh_kde_value * min_peak_height_diff > vbc_peak_kde_values):
-        print("WARNING: Second peak and threshold value too close in VBC. "
-              "Normalization may be unreliable.")
+    if vbc_thresh * min_peak_distance > vbc_peak or vbc_thresh_kde_value * min_peak_height_diff > vbc_peak_kde_values:
+        print("WARNING: Second peak and threshold value too close in VBC. Normalization may be unreliable.")
         unreliable_norm_flag = True
 
     return unreliable_norm_flag
@@ -211,15 +228,15 @@ def reads_per_clonotype_filter(df, output_prefix, default_low_thresh, mode="bulk
     """
     print("Running VBC filtering...")
     if mode == "single_cell":
-        group_cols = ['cloneId', 'tagValueMIWELLNAME']
+        group_cols = ["cloneId", "tagValueMIWELLNAME"]
         n_barcodes = 4
     else:
-        group_cols = ['cloneId']
+        group_cols = ["cloneId"]
         n_barcodes = 8
 
-    clone_barcode_counts = df.groupby(group_cols)['tagValueMIVBC'].nunique()
-    clone_total_reads = df.groupby(group_cols)['readCount'].sum().reset_index()
-    clone_total_reads['barcode_count'] = clone_total_reads.set_index(group_cols).index.map(clone_barcode_counts)
+    clone_barcode_counts = df.groupby(group_cols)["tagValueMIVBC"].nunique()
+    clone_total_reads = df.groupby(group_cols)["readCount"].sum().reset_index()
+    clone_total_reads["barcode_count"] = clone_total_reads.set_index(group_cols).index.map(clone_barcode_counts)
 
     # --- Per-bin KDE thresholding ---
     thresholds = {}
@@ -229,7 +246,7 @@ def reads_per_clonotype_filter(df, output_prefix, default_low_thresh, mode="bulk
     left_maxes_kde_values = {}
     right_maxes_kde_values = {}
     for barcode_count in range(1, n_barcodes + 1):
-        subset = clone_total_reads[clone_total_reads['barcode_count'] == barcode_count]['readCount']
+        subset = clone_total_reads[clone_total_reads["barcode_count"] == barcode_count]["readCount"]
         (
             thresholds[barcode_count],
             left_maxes[barcode_count],
@@ -272,54 +289,61 @@ def reads_per_clonotype_filter(df, output_prefix, default_low_thresh, mode="bulk
 
     # --- VBC=1 normalization reliability fallback (VBC1 -> VBC2 -> VBC3 -> NaN) ---
     vbc1_unreliability = is_normalization_unreliable(
-        1, clone_total_reads, thresholds, thresholds_kde_values, right_maxes, right_maxes_kde_values)
+        1, clone_total_reads, thresholds, thresholds_kde_values, right_maxes, right_maxes_kde_values
+    )
     if vbc1_unreliability:
         print("WARNING: VBC=1 normalization may be unreliable.")
         vbc2_unreliability = is_normalization_unreliable(
-            2, clone_total_reads, thresholds, thresholds_kde_values, right_maxes, right_maxes_kde_values)
+            2, clone_total_reads, thresholds, thresholds_kde_values, right_maxes, right_maxes_kde_values
+        )
         if vbc2_unreliability:
             print("WARNING: VBC=2 normalization may be unreliable.")
             vbc3_unreliability = is_normalization_unreliable(
-                3, clone_total_reads, thresholds, thresholds_kde_values, right_maxes, right_maxes_kde_values)
+                3, clone_total_reads, thresholds, thresholds_kde_values, right_maxes, right_maxes_kde_values
+            )
             if vbc3_unreliability:
                 print("WARNING: VBC=3 normalization may be unreliable.")
-                right_maxes[1] = float('nan')
+                right_maxes[1] = float("nan")
             else:
                 right_maxes[1] = right_maxes[3] / 3  # peak of VBC=3 is 3x that of VBC=1
         else:
-            right_maxes[1] = right_maxes[2] / 2      # peak of VBC=2 is 2x that of VBC=1
+            right_maxes[1] = right_maxes[2] / 2  # peak of VBC=2 is 2x that of VBC=1
 
     # --- Write the 7-column maximas file (normalize.py reads iloc[0, 3] as normFactor) ---
     maximas_file = f"{output_prefix}.kde.maximas.txt"
     with open(maximas_file, "w") as f:
         for barcode_count in range(1, n_barcodes + 1):
-            f.write(f"{barcode_count}\t{thresholds[barcode_count]}\t{left_maxes[barcode_count]}\t"
-                    f"{right_maxes[barcode_count]}\t{thresholds_kde_values[barcode_count]}\t"
-                    f"{left_maxes_kde_values[barcode_count]}\t{right_maxes_kde_values[barcode_count]}\n")
+            f.write(
+                f"{barcode_count}\t{thresholds[barcode_count]}\t{left_maxes[barcode_count]}\t"
+                f"{right_maxes[barcode_count]}\t{thresholds_kde_values[barcode_count]}\t"
+                f"{left_maxes_kde_values[barcode_count]}\t{right_maxes_kde_values[barcode_count]}\n"
+            )
 
     # --- Apply thresholds, keep passing clones ---
     clone_total_reads = clone_total_reads.copy()
-    clone_total_reads.loc[:, 'keep'] = clone_total_reads.apply(
-        lambda row: row['readCount'] >= thresholds.get(row['barcode_count'], np.inf),
+    clone_total_reads.loc[:, "keep"] = clone_total_reads.apply(
+        lambda row: row["readCount"] >= thresholds.get(row["barcode_count"], np.inf),
         axis=1,
     )
-    clones_to_keep = clone_total_reads[clone_total_reads['keep']][group_cols]
-    final_data = df.merge(clones_to_keep, on=group_cols, how='inner').copy()
+    clones_to_keep = clone_total_reads[clone_total_reads["keep"]][group_cols]
+    final_data = df.merge(clones_to_keep, on=group_cols, how="inner").copy()
 
     # One row per clone: keep metadata (first), sum readCount, recompute barcode_count
     grouped_final_data = final_data.groupby(group_cols).first().reset_index()
-    grouped_final_data['readCount'] = final_data.groupby(group_cols)['readCount'].sum().values
-    grouped_final_data['barcode_count'] = grouped_final_data.set_index(group_cols).index.map(clone_barcode_counts)
-    grouped_final_data = grouped_final_data.drop(columns=['tagValueMIVBC'], errors='ignore')
+    grouped_final_data["readCount"] = final_data.groupby(group_cols)["readCount"].sum().values
+    grouped_final_data["barcode_count"] = grouped_final_data.set_index(group_cols).index.map(clone_barcode_counts)
+    grouped_final_data = grouped_final_data.drop(columns=["tagValueMIVBC"], errors="ignore")
     grouped_final_data = grouped_final_data.sort_values("readCount", ascending=False)
 
     original_rows = df.shape[0]
-    original_rows_readSum = int(df['readCount'].sum())
-    filtered_rows_readSum = int(grouped_final_data['readCount'].sum())
+    original_rows_readSum = int(df["readCount"].sum())
+    filtered_rows_readSum = int(grouped_final_data["readCount"].sum())
     print(f"Original number of rows: {original_rows:,}")
     print(f"Surviving clonotypes after read filtering: {grouped_final_data.shape[0]:,}")
-    print(f"Reads removed: {original_rows_readSum - filtered_rows_readSum:,} "
-          f"({(original_rows_readSum - filtered_rows_readSum)/original_rows_readSum:.1%})")
+    print(
+        f"Reads removed: {original_rows_readSum - filtered_rows_readSum:,} "
+        f"({(original_rows_readSum - filtered_rows_readSum) / original_rows_readSum:.1%})"
+    )
     print()
 
     return grouped_final_data
@@ -336,20 +360,20 @@ def main(input_file, output_prefix, mode="bulk"):
     output_file = f"{output_prefix}.tsv"
     maximas_file = f"{output_prefix}.kde.maximas.txt"
 
-    df_in = pd.read_csv(input_file, sep='\t', low_memory=False)
+    df_in = pd.read_csv(input_file, sep="\t", low_memory=False)
 
     # Empty input -> valid empty output (block schema) + empty maximas
     if df_in.empty:
         print("Input is empty. Writing empty output file with headers.")
-        empty_cols = [c for c in df_in.columns if c != 'tagValueMIVBC'] + ['barcode_count']
-        pd.DataFrame(columns=empty_cols).to_csv(output_file, sep='\t', index=False)
+        empty_cols = [c for c in df_in.columns if c != "tagValueMIVBC"] + ["barcode_count"]
+        pd.DataFrame(columns=empty_cols).to_csv(output_file, sep="\t", index=False)
         open(maximas_file, "w").close()
         return
 
     # QC fail -> pass the raw input through unfiltered + empty maximas
     if not qc_mixcr_output(input_file):
         print("QC failed (too few clonotypes). Passing input through unfiltered.")
-        df_in.to_csv(output_file, sep='\t', index=False)
+        df_in.to_csv(output_file, sep="\t", index=False)
         open(maximas_file, "w").close()
         return
 
@@ -360,19 +384,25 @@ def main(input_file, output_prefix, mode="bulk"):
 
     # Preserve the block's downstream schema: recompute readFraction over surviving clones
     # (filtering changed the read total, so the carried-through value is stale).
-    total_reads = df_filtered['readCount'].sum()
-    df_filtered['readFraction'] = (df_filtered['readCount'] / total_reads) if total_reads else 0
+    total_reads = df_filtered["readCount"].sum()
+    df_filtered["readFraction"] = (df_filtered["readCount"] / total_reads) if total_reads else 0
     df_filtered = df_filtered.sort_values("readCount", ascending=False)
-    df_filtered.to_csv(output_file, sep='\t', index=False)
+    df_filtered.to_csv(output_file, sep="\t", index=False)
     print(f"Filtered data saved to {output_file}")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="VBC QC filtering for Cellecta DriverMap AIR.")
     parser.add_argument("input_file", type=str, help="Path to input TSV file.")
-    parser.add_argument("output_prefix", type=str,
-                        help="Prefix for output files (writes <prefix>.tsv + <prefix>.kde.maximas.txt).")
-    parser.add_argument("--mode", type=str, choices=["bulk", "single_cell"], default="bulk",
-                        help="Processing mode: 'bulk' (default) or 'single_cell' DriverMap AIR.")
+    parser.add_argument(
+        "output_prefix", type=str, help="Prefix for output files (writes <prefix>.tsv + <prefix>.kde.maximas.txt)."
+    )
+    parser.add_argument(
+        "--mode",
+        type=str,
+        choices=["bulk", "single_cell"],
+        default="bulk",
+        help="Processing mode: 'bulk' (default) or 'single_cell' DriverMap AIR.",
+    )
     args = parser.parse_args()
     main(args.input_file, args.output_prefix, mode=args.mode)

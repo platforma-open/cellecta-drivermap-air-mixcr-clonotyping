@@ -9,6 +9,7 @@
     "build": "pl-pkg build",
     "prepublishOnly": "pl-pkg prepublish",
     "do-pack": "rm -f *.tgz && pl-pkg build && pnpm pack && mv platforma-open*.tgz package.tgz",
+    "software:reqs": "uv --directory .. pip compile --group hash-column --no-deps --no-annotate --custom-compile-command \"pnpm software:reqs\" -o hash-column/src/requirements.txt",
     "changeset": "changeset",
     "version-packages": "changeset version"
   },

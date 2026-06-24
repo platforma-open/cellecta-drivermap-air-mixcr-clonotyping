@@ -3,7 +3,6 @@ import sys
 from typing import List, Tuple
 
 import polars as pl
-import polars_hash as plh  # Assuming polars_hash registers extensions automatically
 
 
 def parse_calculate_args(calculate_args: List[List[str]]) -> List[Tuple[List[str], str]]:
@@ -13,7 +12,8 @@ def parse_calculate_args(calculate_args: List[List[str]]) -> List[Tuple[List[str
     for i, calc_arg in enumerate(calculate_args):
         if len(calc_arg) < 2:
             print(
-                f"Error: --calculate argument #{i+1} must have at least one input column and one output column name. Got: {calc_arg}",
+                f"Error: --calculate argument #{i + 1} must have at least one input column "
+                f"and one output column name. Got: {calc_arg}",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -21,7 +21,7 @@ def parse_calculate_args(calculate_args: List[List[str]]) -> List[Tuple[List[str
         input_names = calc_arg[:-1]
         if not input_names:
             print(
-                f"Error: --calculate argument #{i+1} must have at least one input column. Got: {calc_arg}",
+                f"Error: --calculate argument #{i + 1} must have at least one input column. Got: {calc_arg}",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -40,12 +40,8 @@ def main():
     parser = argparse.ArgumentParser(
         description="Add one or more hash columns to a TSV table based on selected columns."
     )
-    parser.add_argument(
-        "--input-table", required=True, help="Path to the input TSV file."
-    )
-    parser.add_argument(
-        "--output-table", required=True, help="Path to the output TSV file."
-    )
+    parser.add_argument("--input-table", required=True, help="Path to the input TSV file.")
+    parser.add_argument("--output-table", required=True, help="Path to the output TSV file.")
     parser.add_argument(
         "--calculate",
         required=True,
@@ -64,41 +60,42 @@ def main():
     parser.add_argument(
         "--hash-bytes",
         type=int,
-        default=12, # Default to 12 bytes
-        help="Number of bytes to take from the hash (entropy bytes). Output is Base64 encoded. 0 means use the full hash. (default: 12)",
+        default=12,  # Default to 12 bytes
+        help=(
+            "Number of bytes to take from the hash (entropy bytes). Output is Base64 "
+            "encoded. 0 means use the full hash. (default: 12)"
+        ),
     )
 
     args = parser.parse_args()
 
-    # --- Parse Calculation Specs --- 
+    # --- Parse Calculation Specs ---
     try:
         calculation_specs = parse_calculate_args(args.calculate)
     except SystemExit:
-        sys.exit(1) # Exit if parsing failed
+        sys.exit(1)  # Exit if parsing failed
 
     if args.hash_bytes < 0:
         print(f"Error: --hash-bytes cannot be negative. Got: {args.hash_bytes}", file=sys.stderr)
         sys.exit(1)
-    
+
     sha256_byte_len = 32
     if args.hash_bytes > sha256_byte_len:
-         print(f"Warning: --hash-bytes ({args.hash_bytes}) is greater than the full SHA256 hash length ({sha256_byte_len} bytes). Using the full hash.", file=sys.stderr)
-         num_bytes_to_keep = sha256_byte_len
+        print(
+            f"Warning: --hash-bytes ({args.hash_bytes}) is greater than the full SHA256 "
+            f"hash length ({sha256_byte_len} bytes). Using the full hash.",
+            file=sys.stderr,
+        )
+        num_bytes_to_keep = sha256_byte_len
     elif args.hash_bytes == 0:
-        num_bytes_to_keep = sha256_byte_len # Explicitly use full hash if 0
+        num_bytes_to_keep = sha256_byte_len  # Explicitly use full hash if 0
     else:
         num_bytes_to_keep = args.hash_bytes
-
 
     try:
         # --- Read Data ---
         # Read only the header first to check columns
-        df = pl.read_csv(
-            args.input_table,
-            separator="\t",
-            has_header=True,
-            infer_schema=False
-        )
+        df = pl.read_csv(args.input_table, separator="\t", has_header=True, infer_schema=False)
 
         # --- Column and Output Name Validation ---
         all_input_columns_needed = set()
@@ -106,8 +103,9 @@ def main():
         for input_cols, output_name in calculation_specs:
             all_input_columns_needed.update(input_cols)
             if output_name in df.columns:
-                 print(
-                    f"Warning: Output column '{output_name}' specified in --calculate already exists in the input table. It will be overwritten.",
+                print(
+                    f"Warning: Output column '{output_name}' specified in --calculate "
+                    "already exists in the input table. It will be overwritten.",
                     file=sys.stderr,
                 )
             # Check for duplicates between generated output names was done in parse_calculate_args
@@ -116,19 +114,18 @@ def main():
         missing_input_cols = list(all_input_columns_needed - set(df.columns))
         if missing_input_cols:
             print(
-                f"Error: The following input columns required by --calculate arguments were not found in the table '{args.input_table}': {', '.join(sorted(missing_input_cols))}",
+                "Error: The following input columns required by --calculate arguments "
+                f"were not found in the table '{args.input_table}': "
+                f"{', '.join(sorted(missing_input_cols))}",
                 file=sys.stderr,
             )
             sys.exit(1)
 
-        # --- Hashing Logic --- 
+        # --- Hashing Logic ---
         hash_expressions = []
         for input_cols, output_name in calculation_specs:
-
             # Concatenate specified columns for this calculation, filling nulls with empty strings
-            concat_expr = pl.concat_str(
-                [pl.col(c).fill_null("") for c in input_cols], separator=args.delimiter
-            )
+            concat_expr = pl.concat_str([pl.col(c).fill_null("") for c in input_cols], separator=args.delimiter)
 
             # Calculate SHA256 hash (returns hex string)
             hash_hex_expr = concat_expr.chash.sha2_256()
@@ -138,11 +135,10 @@ def main():
             else:
                 hash_truncated_expr = hash_hex_expr
 
-            hash_base64_expr = hash_truncated_expr.str.decode('hex').bin.encode('base64')
+            hash_base64_expr = hash_truncated_expr.str.decode("hex").bin.encode("base64")
 
             # Add the aliased expression to the list
             hash_expressions.append(hash_base64_expr.alias(output_name))
-
 
         # --- Add Columns and Write Output ---
         df_out = df.with_columns(hash_expressions)

@@ -1,0 +1,84 @@
+# Single dev/test project for all of the block's python software packages.
+#
+# This file is NOT shipped — pl-pkg builds each package from its own src/requirements.txt
+# (offline pip toolset). It exists only for the dev/test toolchain: one uv venv, one lock,
+# one ruff/pytest/coverage config. Each package's runtime pins live in a PEP 735
+# dependency-group named after the package; `pnpm software:reqs` compiles each group to
+# that package's src/requirements.txt via `uv pip compile --group <pkg> --no-deps`.
+[project]
+name = "cellecta-drivermap-software"
+version = "0"
+requires-python = ">=3.12, <3.13"
+dependencies = []
+
+[dependency-groups]
+# Per-package runtime pins (the single source of truth for each src/requirements.txt).
+# Keep aligned with the wheels the runenv ships (@platforma-open/milaboratories.runenv-python-3:3.12.6).
+vbc-filtering = ["pandas==2.2.3", "numpy==2.2.6", "scikit-learn==1.6.1", "scipy==1.15.3"]
+vbc-normalization = ["pandas==2.2.3"]
+hash-column = ["polars-hash==0.5.4", "polars-lts-cpu==1.30.0"]
+
+# Dev-only tooling. `uv sync --all-groups` installs every group above plus this, so the
+# golden tests' upstream reference scripts (which import numpy/scikit-learn/scipy via the
+# vbc-filtering group, and matplotlib/seaborn here) all resolve in the one venv. None of
+# these leak into any requirements.txt (those are compiled per-group, never from dev).
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.14",
+    "hypothesis>=6.0",
+    "matplotlib>=3.9",
+    "seaborn>=0.13",
+]
+
+[tool.uv]
+# Local floor — any reasonably recent uv is fine; an ancient uv (different `uv pip compile`
+# output) errors clearly instead of silently drifting requirements.txt. CI pins the exact
+# uv via setup-uv for reproducibility.
+required-version = ">=0.11.16"
+
+[tool.pytest.ini_options]
+# testpaths/pythonpath are relative to this file (the rootdir). Module names across the
+# src dirs don't collide (filter / normalize / main), so all three can share pythonpath.
+testpaths = ["vbc-filtering/test", "vbc-normalization/test"]
+pythonpath = ["vbc-filtering/src", "vbc-normalization/src", "hash-column/src"]
+addopts = "-ra --strict-markers"
+markers = [
+    "slow: golden comparison that runs the upstream KDE filter; deselect with -m 'not slow'",
+]
+
+[tool.coverage.run]
+source = ["vbc-filtering/src", "vbc-normalization/src", "hash-column/src"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+]
+
+[tool.ruff]
+exclude = [
+    ".bzr", ".direnv", ".eggs", ".git", ".git-rewrite", ".hg",
+    ".ipynb_checkpoints", ".mypy_cache", ".nox", ".pants.d",
+    ".pyenv", ".pytest_cache", ".pytype", ".ruff_cache", ".svn",
+    ".tox", ".venv", ".vscode", "__pypackages__", "_build",
+    "buck-out", "build", "dist", "node_modules", "site-packages", "venv",
+    # The golden-test bed holds verbatim upstream reference scripts (and the fixture
+    # generator) — not ours to lint/format; keep them byte-for-byte as committed.
+    "test-data",
+]
+line-length = 120
+indent-width = 4
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "E501", "F", "I"]
+ignore = []
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

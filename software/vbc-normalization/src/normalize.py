@@ -14,44 +14,44 @@ Estimation math is upstream main's: `templateEstimate = floor(readCount/normFact
 (avoids banker's rounding), drop clones whose estimate rounds to 0, and emit `"NA"` when
 the normalization factor is missing/NaN (degenerate VBC bins).
 """
+
 import argparse
 import math
 import os
 
-import numpy as np
 import pandas as pd
 
 
 def quantify_templates(maxima_file, input_file, output_file):
-    df = pd.read_csv(input_file, sep='\t')
+    df = pd.read_csv(input_file, sep="\t")
 
     # normFactor is the right-peak max of the VBC=1 bin: column 3 of the maximas' first row.
-    normFactor = float('nan')
+    normFactor = float("nan")
     if os.path.exists(maxima_file) and os.path.getsize(maxima_file) > 0:
         try:
-            normFactor = float(pd.read_csv(maxima_file, sep='\t', header=None).iloc[0, 3])
+            normFactor = float(pd.read_csv(maxima_file, sep="\t", header=None).iloc[0, 3])
         except Exception as e:
             print(f"Error reading maxima file: {e}")
 
-    if 'readCount' not in df.columns:
+    if "readCount" not in df.columns:
         print(f"'readCount' column missing in {input_file}")
-        df.to_csv(output_file, sep='\t', index=False)
+        df.to_csv(output_file, sep="\t", index=False)
         return
 
     # Empty input, or no usable normalization factor -> emit NA estimates (no crash).
     if df.empty or math.isnan(normFactor):
-        df['templateEstimate'] = "NA"
-        df['templateEstimateFraction'] = "NA"
-        df.to_csv(output_file, sep='\t', index=False)
+        df["templateEstimate"] = "NA"
+        df["templateEstimateFraction"] = "NA"
+        df.to_csv(output_file, sep="\t", index=False)
         return
 
     # floor(x/f + 0.5) avoids Python round()'s banker's rounding; drop zero-estimate clones.
-    df['templateEstimate'] = df['readCount'].apply(lambda x: int(np.floor(x / normFactor + 0.5)))
-    df = df[df['templateEstimate'] != 0].copy()
+    df["templateEstimate"] = df["readCount"].apply(lambda x: int(math.floor(x / normFactor + 0.5)))
+    df = df[df["templateEstimate"] != 0].copy()
 
-    total = df['templateEstimate'].sum()
-    df['templateEstimateFraction'] = (df['templateEstimate'] / total) if total else 0
-    df.to_csv(output_file, sep='\t', index=False)
+    total = df["templateEstimate"].sum()
+    df["templateEstimateFraction"] = (df["templateEstimate"] / total) if total else 0
+    df.to_csv(output_file, sep="\t", index=False)
 
 
 if __name__ == "__main__":
