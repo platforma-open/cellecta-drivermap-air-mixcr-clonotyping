@@ -69,3 +69,19 @@ Test_ranking_column_is_never_na := func() {
 	test.isEqual("readCount", rankingColumn,
 		"rankingColumn must be readCount (never-NA); templateEstimate can be \"NA\" and crashes ptransform idxmax")
 }
+
+// keyColumns is derived (keyFeatures as nSeq<Feature> + keyGeneColumns), not a hand-listed
+// parallel array. Pin the derived result per preset so a drift in keyFeatures/features — or a
+// broken derivation — is caught: a wrong clonotypeKey silently mis-collapses clones or fails
+// the abundance import.
+Test_key_columns_derivation := func() {
+	cdr3 := getExports.getExportParams("cellecta-human-rna-xcr-mivbc-drivermap-air-v2", blockId).keyColumns
+	test.isEqual(["nSeqCDR3", "bestVGene", "bestJGene", "bestCGene"], cdr3,
+		"CDR3 preset keyColumns must derive to nSeqCDR3 + the gene key columns")
+
+	fullLength := getExports.getExportParams("cellecta-human-rna-xcr-full-length-mivbc-drivermap-air-v2", blockId).keyColumns
+	test.isEqual(
+		["nSeqCDR1", "nSeqFR2", "nSeqCDR2", "nSeqFR3", "nSeqCDR3", "nSeqFR4", "bestVGene", "bestJGene", "bestCGene"],
+		fullLength,
+		"full-length preset keyColumns must derive to the 6 nSeq key features + the gene key columns")
+}
