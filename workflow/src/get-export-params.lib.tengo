@@ -54,10 +54,10 @@ a := func(order, defaultVisibility, spec) {
 /**
  * Derive the clonotype-key columns for a preset: each key nucleotide feature as its
  * exported nSeq<Feature> column, followed by the gene key columns. Single source of truth
- * — keyColumns is computed from keyFeatures, not maintained as a parallel hand-edited list,
- * so the exported features and the clone key cannot drift apart. Each keyFeature must be in
- * the preset's `features` (else its nSeq column is never exported); the mismatch is caught
- * here with a clear message rather than as a downstream "column does not exist" panic.
+ * — keyColumns is computed from keyFeatures, not kept as a hand-edited parallel list, so the
+ * exported features and the clone key cannot drift apart. Each keyFeature must be in the
+ * preset's `features` (else its nSeq column is never exported); the mismatch is caught here
+ * with a clear message rather than as a downstream "column does not exist" panic.
  */
 keyColumnsFor := func(presetInfo) {
 	keyColumns := []
@@ -435,7 +435,7 @@ abundanceColumns := func(preset, blockId) {
 	// pandas idxmax, so an all-NaN group — a clonotype seen only in unreliable-normalization
 	// sample(s), where templateEstimate is "NA" — makes idxmax return NaN, then data.loc[NaN]
 	// raises KeyError and crashes the run. templateEstimate fails both tests (NA on degenerate
-	// samples; and a coalesce(templateEstimate, readCount) fallback would mix molecule- and
+	// samples; a coalesce(templateEstimate, readCount) fallback would mix molecule- and
 	// read-unit values across samples). readCount is always present and read depth is a sound
 	// proxy for which sample has the most reliable metadata calls (allele/isotype calling is
 	// read-driven). Cross-sample caveat: the representative may come from the deepest-sequenced

@@ -391,7 +391,7 @@ def main(input_file, output_prefix, mode="bulk"):
 
     # QC fail -> skip the statistical read filtering, but still collapse to the block's
     # one-row-per-clone schema (drop tagValueMIVBC, recompute readFraction) so downstream
-    # aggregate-abundance does not sum readFraction over per-molecule rows + empty maximas.
+    # aggregate-abundance never sums readFraction over per-molecule rows.
     if not qc_mixcr_output(df_in):
         print("QC failed (too few clonotypes). Collapsing to one row per clone, no read filtering.")
         collapse_to_one_row_per_clone(df_in, group_cols).to_csv(output_file, sep="\t", index=False)
