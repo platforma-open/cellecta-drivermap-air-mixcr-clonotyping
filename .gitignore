@@ -12,3 +12,8 @@ software/**/*.tgz
 .DS_Store
 .vscode/sftp.json
 test-dry-run.json
+
+# Python test byproducts (VBC software golden tests)
+__pycache__/
+*.pyc
+.pytest_cache/

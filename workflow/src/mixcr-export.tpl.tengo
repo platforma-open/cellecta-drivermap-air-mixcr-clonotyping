@@ -41,7 +41,7 @@ self.body(func(inputs) {
 		}
 	}
 
-	// Add cloneId and MIBC tags to output
+	// Add cloneId and MIVBC tags to output
 	mixcrCmdBuilder.arg("-cloneId")
 	mixcrCmdBuilder.arg("-tags").arg("Molecule")
 
