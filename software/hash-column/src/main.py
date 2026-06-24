@@ -3,6 +3,7 @@ import sys
 from typing import List, Tuple
 
 import polars as pl
+import polars_hash  # noqa: F401  -- registers the `.chash` Expr namespace (side-effect import)
 
 
 def parse_calculate_args(calculate_args: List[List[str]]) -> List[Tuple[List[str], str]]:

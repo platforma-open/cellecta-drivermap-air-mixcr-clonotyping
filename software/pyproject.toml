@@ -40,7 +40,7 @@ required-version = ">=0.11.16"
 [tool.pytest.ini_options]
 # testpaths/pythonpath are relative to this file (the rootdir). Module names across the
 # src dirs don't collide (filter / normalize / main), so all three can share pythonpath.
-testpaths = ["vbc-filtering/test", "vbc-normalization/test"]
+testpaths = ["vbc-filtering/test", "vbc-normalization/test", "hash-column/test"]
 pythonpath = ["vbc-filtering/src", "vbc-normalization/src", "hash-column/src"]
 addopts = "-ra --strict-markers"
 markers = [
