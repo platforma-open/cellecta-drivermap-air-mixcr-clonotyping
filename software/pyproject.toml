@@ -50,6 +50,12 @@ markers = [
 [tool.coverage.run]
 source = ["vbc-filtering/src", "vbc-normalization/src", "hash-column/src"]
 branch = true
+# Most tests invoke the scripts as subprocesses (`subprocess.run([sys.executable, ...])`);
+# without this, coverage only sees the in-process (direct-import) tests and the golden/CLI
+# tests register 0%. `patch = subprocess` makes child Python processes start coverage too
+# (auto-enables parallel; pytest-cov combines). Inert unless coverage is running, so plain
+# `pytest` / CI runs are unaffected. Requires pytest-cov >= 7 / coverage >= 7.4.
+patch = ["subprocess"]
 
 [tool.coverage.report]
 exclude_lines = [

@@ -14,6 +14,7 @@ import os
 import tempfile
 
 import pandas as pd
+import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 from normalize import quantify_templates
@@ -104,3 +105,49 @@ def test_read_fraction_recomputed_over_survivors():
     surv_total = 150 + 149 + 50
     assert abs(res.loc[0, "readFraction"] - 150 / surv_total) < 1e-9
     assert abs(res["readFraction"].sum() - 1.0) < 1e-9
+
+
+@pytest.mark.parametrize(
+    "maxima_contents",
+    ["1\t2\t0\tnan\t0\t0\t0\n", "1\t2\t0\tbad\t0\t0\t0\n", None],
+    ids=["nan-value", "unparseable", "missing-file"],
+)
+def test_unusable_normfactor_yields_na(maxima_contents):
+    """Any unusable normalization factor -> literal 'NA' for every clone, never a crash.
+
+    Three triggers, one contract (the degenerate-VBC case): an explicit NaN in the maximas,
+    a corrupt maximas whose normFactor cell won't parse (caught -> NaN), or no maximas file
+    at all. The fast counterpart to the slow golden test_nan_normfactor_yields_na. Read with
+    na_filter=False so the literal 'NA' survives (pandas would coerce it to NaN).
+    """
+    with tempfile.TemporaryDirectory() as d:
+        maxima = os.path.join(d, "m.kde.maximas.txt")
+        if maxima_contents is not None:
+            with open(maxima, "w") as f:
+                f.write(maxima_contents)
+        inp = os.path.join(d, "in.tsv")
+        pd.DataFrame({"cloneId": [0, 1], "readCount": [100, 200]}).to_csv(inp, sep="\t", index=False)
+        out = os.path.join(d, "out.tsv")
+        quantify_templates(maxima, inp, out)
+        res = pd.read_csv(out, sep="\t", na_filter=False, dtype=str)
+
+    assert (res["templateEstimate"] == "NA").all()
+    assert (res["templateEstimateFraction"] == "NA").all()
+
+
+def test_missing_readcount_passes_through():
+    """Input without a readCount column is written through unchanged — no estimate columns,
+    no crash. quantify_templates can't estimate molecules without read counts, so it must
+    not fabricate them or fail the run."""
+    with tempfile.TemporaryDirectory() as d:
+        maxima = os.path.join(d, "m.kde.maximas.txt")
+        with open(maxima, "w") as f:
+            f.write("1\t2\t0\t100.0\t0\t0\t0\n")  # valid normFactor; readCount is what's absent
+        inp = os.path.join(d, "in.tsv")
+        pd.DataFrame({"cloneId": [0, 1], "value": [9, 9]}).to_csv(inp, sep="\t", index=False)
+        out = os.path.join(d, "out.tsv")
+        quantify_templates(maxima, inp, out)
+        res = pd.read_csv(out, sep="\t")
+
+    assert "templateEstimate" not in res.columns
+    assert list(res["cloneId"]) == [0, 1]

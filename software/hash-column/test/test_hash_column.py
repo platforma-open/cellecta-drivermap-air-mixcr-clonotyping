@@ -15,6 +15,8 @@ import sys
 
 import pandas as pd
 import polars as pl
+import pytest
+from main import parse_calculate_args
 
 MAIN_SRC = pathlib.Path(__file__).parents[1] / "src" / "main.py"
 
@@ -72,3 +74,80 @@ def test_chash_namespace_registered_on_import():
     assert hasattr(pl.col("x"), "chash"), (
         "`.chash` Expr namespace not registered — `import polars_hash` is missing from main.py"
     )
+
+
+class TestParseCalculateArgs:
+    """Unit tests for the --calculate spec parser (pure, no IO): the last token is the output
+    column name, the rest are inputs."""
+
+    def test_parses_input_and_output_columns(self):
+        assert parse_calculate_args([["a", "b", "ab"], ["c", "c_hash"]]) == [
+            (["a", "b"], "ab"),
+            (["c"], "c_hash"),
+        ]
+
+    @pytest.mark.parametrize("spec", [[["solo"]], [[]]], ids=["one-token", "empty"])
+    def test_too_few_tokens_exits(self, spec):
+        """Each --calculate needs at least one input column plus an output name -> exit."""
+        with pytest.raises(SystemExit):
+            parse_calculate_args(spec)
+
+    def test_duplicate_output_name_exits(self):
+        """Two calculations writing the same output column would clobber -> exit."""
+        with pytest.raises(SystemExit):
+            parse_calculate_args([["a", "key"], ["b", "key"]])
+
+
+def test_missing_input_column_errors(tmp_path):
+    """A --calculate referencing a column absent from the table -> exit 1, names the missing
+    column, writes no output. Guards against silently hashing the wrong columns on schema drift.
+    """
+    inp = tmp_path / "input.tsv"
+    out = tmp_path / "output.tsv"
+    pd.DataFrame({"present": ["x"]}).to_csv(inp, sep="\t", index=False)
+
+    res = subprocess.run(
+        [
+            sys.executable,
+            str(MAIN_SRC),
+            "--input-table",
+            str(inp),
+            "--output-table",
+            str(out),
+            "--calculate",
+            "absent",
+            "key",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert res.returncode == 1
+    assert "absent" in res.stderr
+    assert not out.exists()
+
+
+def test_negative_hash_bytes_errors(tmp_path):
+    """--hash-bytes < 0 is rejected with exit 1 and a message naming the option."""
+    inp = tmp_path / "input.tsv"
+    out = tmp_path / "output.tsv"
+    pd.DataFrame({"a": ["x"]}).to_csv(inp, sep="\t", index=False)
+
+    res = subprocess.run(
+        [
+            sys.executable,
+            str(MAIN_SRC),
+            "--input-table",
+            str(inp),
+            "--output-table",
+            str(out),
+            "--calculate",
+            "a",
+            "key",
+            "--hash-bytes",
+            "-1",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert res.returncode == 1
+    assert "hash-bytes" in res.stderr
