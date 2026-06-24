@@ -28,8 +28,6 @@ import { parseProgressString } from "../parseProgress";
 import { resultMap, type Result } from "../results";
 import SampleReportPanel from "./SampleReportPanel.vue";
 import SettingsPanel from "./SettingsPanel.vue";
-// import SampleReportPanel from './SampleReportPanel.vue';
-// import SettingsPanel from './SettingsPanel.vue';
 
 const app = useApp();
 

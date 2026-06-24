@@ -9,6 +9,6 @@ defineProps<{
 </script>
 
 <template>
-  <AlignmentsChart :align-report="sampleData.alignReport" title="Alignments" />
-  <ChainsChart :align-report="sampleData.alignReport" title="Chains distribution" />
+  <AlignmentsChart :align-report="sampleData.alignReport" />
+  <ChainsChart :align-report="sampleData.alignReport" />
 </template>

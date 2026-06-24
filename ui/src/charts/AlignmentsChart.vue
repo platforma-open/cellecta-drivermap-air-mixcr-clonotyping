@@ -1,19 +1,16 @@
 <script setup lang="ts">
 import type { AlignReport } from "@platforma-open/milaboratories.mixcr-clonotyping-2.model";
 import { PlChartStackedBar } from "@platforma-sdk/ui-vue";
-import { computed } from "vue";
+import { toRef } from "vue";
 import { useAlignmentChartSettings } from "./alignmentChartSettings";
 
 const props = defineProps<{
   alignReport?: AlignReport;
-  title?: string;
 }>();
 
-const alignReport = computed(() => props.alignReport);
-
-const settings = useAlignmentChartSettings(alignReport);
+const settings = useAlignmentChartSettings(toRef(props, "alignReport"));
 </script>
 
 <template>
-  <PlChartStackedBar :settings="{ ...settings, title: title }" />
+  <PlChartStackedBar :settings="settings" />
 </template>

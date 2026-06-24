@@ -1,4 +1,4 @@
-import { ProgressPattern } from "@platforma-open/milaboratories.mixcr-clonotyping-2.model";
+import { ProgressPattern } from "@platforma-open/cellecta.drivermap-mixcr-clonotyping.model";
 
 type ParsedProgress = {
   raw?: string;
