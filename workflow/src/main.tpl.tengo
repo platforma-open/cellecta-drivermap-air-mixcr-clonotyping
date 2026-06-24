@@ -1,12 +1,7 @@
-// "hello world"
 wf := import("@platforma-sdk/workflow-tengo:workflow")
-exec := import("@platforma-sdk/workflow-tengo:exec")
 assets:= import("@platforma-sdk/workflow-tengo:assets")
 render := import("@platforma-sdk/workflow-tengo:render")
-maps := import("@platforma-sdk/workflow-tengo:maps")
-smart := import("@platforma-sdk/workflow-tengo:smart")
 pframes := import("@platforma-sdk/workflow-tengo:pframes")
-ll := import("@platforma-sdk/workflow-tengo:ll")
 
 processTpl := assets.importTemplate(":process")
 
@@ -40,9 +35,7 @@ wf.body(func(args) {
 		outputs: {
 			logs: runMixcr.output("logs.data"),
 			qc: pframes.exportColumnData(runMixcr.output("qc.data")),
-			reports: pframes.exportColumnData(runMixcr.output("reports.data")),
-			clones: pframes.exportFrame(runMixcr.output("clonotypes")), //@TODO: remove from outputs
-			clns: runMixcr.output("clns.data") //@TODO: remove from outputs
+			reports: pframes.exportColumnData(runMixcr.output("reports.data"))
 		},
 		exports: exports
 	}

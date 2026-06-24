@@ -92,7 +92,7 @@ def barcode_hopping_filter(df, percentage, mode="bulk"):
     return filtered_df
 
 
-def find_kde_mimima_threshold(data, barcode_count, default_low_thresh, min_valley_depth=0.10):
+def find_kde_mimima_threshold(data, default_low_thresh, min_valley_depth=0.10):
     """Find a read-count threshold for a VBC bin via KDE minima detection.
 
     Returns a 6-tuple on every path:
@@ -275,7 +275,7 @@ def reads_per_clonotype_filter(df, output_prefix, default_low_thresh, mode="bulk
             thresholds_kde_values[barcode_count],
             left_maxes_kde_values[barcode_count],
             right_maxes_kde_values[barcode_count],
-        ) = find_kde_mimima_threshold(subset, barcode_count, default_low_thresh)
+        ) = find_kde_mimima_threshold(subset, default_low_thresh)
 
     # --- Threshold sanity checks: 20x-jump correction + monotonic non-decreasing ---
     sorted_keys = sorted(thresholds.keys())

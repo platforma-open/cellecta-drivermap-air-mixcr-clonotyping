@@ -1,7 +1,6 @@
 // mixcr analyze
 
 self := import("@platforma-sdk/workflow-tengo:tpl")
-smart := import("@platforma-sdk/workflow-tengo:smart")
 pConstants := import("@platforma-sdk/workflow-tengo:pframes.constants")
 ll := import("@platforma-sdk/workflow-tengo:ll")
 exec := import("@platforma-sdk/workflow-tengo:exec")

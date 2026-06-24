@@ -1,7 +1,6 @@
 // process dataset
 
 json := import("json")
-text := import("text")
 
 
 self := import("@platforma-sdk/workflow-tengo:tpl")
@@ -9,14 +8,8 @@ self := import("@platforma-sdk/workflow-tengo:tpl")
 ll := import("@platforma-sdk/workflow-tengo:ll")
 assets := import("@platforma-sdk/workflow-tengo:assets")
 pframes := import("@platforma-sdk/workflow-tengo:pframes")
-smart := import("@platforma-sdk/workflow-tengo:smart")
 slices := import("@platforma-sdk/workflow-tengo:slices")
 maps := import("@platforma-sdk/workflow-tengo:maps")
-file := import("@platforma-sdk/workflow-tengo:file")
-llPFrames := import("@platforma-sdk/workflow-tengo:pframes.ll")
-pSpec := import("@platforma-sdk/workflow-tengo:pframes.spec")
-pUtil := import("@platforma-sdk/workflow-tengo:pframes.util")
-pConstants := import("@platforma-sdk/workflow-tengo:pframes.constants")
 
 /**
  * Run `mixcr analyze` to produce clns files.
@@ -224,8 +217,6 @@ self.body(func(inputs) {
 
 	// tsv column names corresponding to keyArgs
 	keyColumns := exportParams.keyColumns
-	// tsv column names corresponding to abundanceArgs
-	abundanceColumns := exportParams.abundanceColumns
 	// representative-clone ranking column for by-clone-key aggregation (never-NA; see get-export-params)
 	rankingColumn := exportParams.rankingColumn
 
@@ -369,7 +360,6 @@ self.body(func(inputs) {
 			}
 		)
 
-		// only adding data outputs if we are in bulk mode
 		abundanceResults.addXsvOutputToBuilder(clonotypes, "abundancePf", "abundancePf/" + chain + "/")
 		aggregateByCloneKey.addXsvOutputToBuilder(clonotypes, "byCloneKey", "byCloneKey/" + chain + "/")
 	}

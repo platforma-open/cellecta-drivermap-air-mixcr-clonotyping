@@ -72,15 +72,6 @@ export const platforma = BlockModelV3.create(dataModel)
     });
   })
 
-  // @TODO: remove from outputs
-  .output("clones", (ctx) => {
-    return ctx.outputs?.resolve("clones");
-  })
-  // @TODO: remove from outputs
-  .output("clns", (ctx) => {
-    return ctx.outputs?.resolve("clns");
-  })
-
   .output("sampleLabels", (ctx): Record<string, string> | undefined => {
     const inputRef = ctx.data.input;
     if (inputRef === undefined) return undefined;

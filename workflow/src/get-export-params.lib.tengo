@@ -96,12 +96,11 @@ addSpec := func(columns, additionalSpec) {
  * Calculates the export specifications columns for a specific preset
  *
  * @param preset - MiXCR preset name
- * @param blockId - The block ID
  * @return An object containing:
  *   - mixcrExportArgs: an array of arrays of MiXCR arg groups
  *   - columnSpecs: an array of column specifications for clonotypes
  */
-cloneColumns := func(preset, blockId) {
+cloneColumns := func(preset) {
 	presetInfo := presets[preset]
 	assemblingFeature := presetInfo.assemblingFeature
 	coreGeneFeatures := presetInfo.coreGeneFeatures
@@ -158,9 +157,6 @@ cloneColumns := func(preset, blockId) {
 
 	// Sequences
 
-	// column with nucleotide sequence of this feature will be marked as anchor
-	
-
 	for featureU in features {
 		featureL := text.to_lower(featureU)
 		for isAminoAcid in [false, true] {
@@ -214,19 +210,7 @@ cloneColumns := func(preset, blockId) {
 
 	orderP = 10000
 
-	mutationColumnVariants := [
-	// {
-	// 	name: "Mutations",
-	// 	valueType: "String",
-	// 	labelPart: " mutations in ",
-	// 	idPart: "-mutations-"
-	// }, {
-	// 	name: "MutationsCount",
-	// 	valueType: "Int",
-	// 	labelPart: " mutations count in ",
-	// 	idPart: "-mutations-count-"
-	// }, 
-	{
+	mutationColumnVariants := [ {
 		name: "MutationsRate",
 		valueType: "Double",
 		labelPart: " mutations rate in ",
@@ -324,14 +308,9 @@ cloneColumns := func(preset, blockId) {
 
 /**
  * Calculates abundance columns specs
- *
- * @param preset - MiXCR preset name
- * @param blockId - The block ID
  */
-abundanceColumns := func(preset, blockId) {
+abundanceColumns := func() {
 
-	presetInfo := presets[preset]
-	
 	// for now we only support presets for Air Assay v2 with VBCs
 	mixcrExportArgs := [["-readCount"], ["-readFraction"]]
 
@@ -505,8 +484,8 @@ getExportParams := func(preset, blockId) {
 
 	presetInfo := presets[preset]
 	keyColumns := keyColumnsFor(presetInfo)
-	cloneColumns := cloneColumns(preset, blockId)
-	abundanceColumns := abundanceColumns(preset, blockId)
+	cloneColumns := cloneColumns(preset)
+	abundanceColumns := abundanceColumns()
 	keyAxesSpec := keyAxesSpec(blockId, cloneColumns.cloneColumnSpecs, keyColumns)
 	mixcrExportArgs := cloneColumns.mixcrExportArgs + abundanceColumns.mixcrExportArgs
 
