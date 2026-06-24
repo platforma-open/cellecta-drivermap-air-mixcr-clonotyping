@@ -33,6 +33,7 @@ self.body(func(inputs) {
 	
 	mixcrCmdBuilder := exec.builder().
 		printErrStreamToStdout().
+		saveStdoutStream().
 		env("MI_PROGRESS_PREFIX", progressPrefix).
 		software(mixcrSw).
 		secret("MI_LICENSE", "MI_LICENSE").
