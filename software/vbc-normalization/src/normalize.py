@@ -51,6 +51,15 @@ def quantify_templates(maxima_file, input_file, output_file):
 
     total = df["templateEstimate"].sum()
     df["templateEstimateFraction"] = (df["templateEstimate"] / total) if total else 0
+
+    # The zero-estimate drop changes the surviving clone set, so readFraction (computed by
+    # filter.py over its own survivors) is now stale. Recompute it over the clones that
+    # remain so the per-sample fraction still sums to 1 — aggregate-abundance sums readFraction
+    # per clonotypeKey and downstream views treat it as a normalized 0..1 within-sample fraction.
+    if "readFraction" in df.columns:
+        read_total = df["readCount"].sum()
+        df["readFraction"] = (df["readCount"] / read_total) if read_total else 0
+
     df.to_csv(output_file, sep="\t", index=False)
 
 

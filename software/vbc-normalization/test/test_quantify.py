@@ -71,3 +71,36 @@ def test_rounding_examples():
     assert res.loc[0, "templateEstimate"] == 2
     assert res.loc[1, "templateEstimate"] == 1
     assert res.loc[2, "templateEstimate"] == 1
+
+
+def test_read_fraction_recomputed_over_survivors():
+    """readFraction is recomputed over the clones surviving the zero-estimate drop.
+
+    filter.py computes readFraction over its own survivors; the later zero-estimate drop in
+    normalize removes more clones, so the carried-through readFraction is stale and no longer
+    sums to 1. The fix renormalizes it over the survivors. normFactor=100, reads
+    [150,149,50,49,10] -> estimates [2,1,1,0,0]; clones 3,4 drop. The input carries
+    deliberately stale readFractions (0.2 each, summing to 1 over all 5); the output must
+    renormalize over the 3 survivors.
+    """
+    reads = [150, 149, 50, 49, 10]
+    with tempfile.TemporaryDirectory() as d:
+        maxima = os.path.join(d, "m.kde.maximas.txt")
+        with open(maxima, "w") as f:
+            f.write("1\t2\t0\t100.0\t0\t0\t0\n")
+        inp = os.path.join(d, "in.tsv")
+        pd.DataFrame(
+            {
+                "cloneId": list(range(len(reads))),
+                "readCount": reads,
+                "readFraction": [0.2] * len(reads),  # stale: computed over all 5 clones
+            }
+        ).to_csv(inp, sep="\t", index=False)
+        out = os.path.join(d, "out.tsv")
+        quantify_templates(maxima, inp, out)
+        res = pd.read_csv(out, sep="\t").set_index("cloneId")
+
+    assert set(res.index) == {0, 1, 2}  # zero-estimate clones dropped
+    surv_total = 150 + 149 + 50
+    assert abs(res.loc[0, "readFraction"] - 150 / surv_total) < 1e-9
+    assert abs(res["readFraction"].sum() - 1.0) < 1e-9

@@ -31,20 +31,41 @@ from scipy.signal import argrelextrema
 from sklearn.neighbors import KernelDensity
 
 
-def qc_mixcr_output(input_file):
+def qc_mixcr_output(df):
     """Check MiXCR output quality. Returns True if there are enough clonotypes to filter."""
     print("Running clonotype qc...")
-    df = pd.read_csv(input_file, sep="\t", low_memory=False)
     clonotype_count = df.shape[0]
     if clonotype_count < 1000:
         return False
     return True
 
 
-def barcode_hopping_filter(input_file, percentage, mode="bulk"):
+def collapse_to_one_row_per_clone(df, group_cols):
+    """Collapse a per-(clone, molecule) table to one row per clone (the block schema).
+
+    Keeps the clone metadata (first row of the group), sums readCount, records
+    barcode_count (distinct VBC molecule tags per clone), drops the molecule tag
+    column, and recomputes readFraction over the surviving clones (the input value
+    is per-molecule / stale once rows are collapsed or filtered). Every output path
+    routes through this so the abundance import and `aggregate-abundance` (which SUMS
+    readFraction per clonotypeKey) always see one row per clone with a fraction that
+    sums to 1 — never raw per-molecule rows.
+    """
+    clone_barcode_counts = df.groupby(group_cols)["tagValueMIVBC"].nunique()
+    grouped = df.groupby(group_cols).first().reset_index()
+    grouped["readCount"] = df.groupby(group_cols)["readCount"].sum().values
+    grouped["barcode_count"] = grouped.set_index(group_cols).index.map(clone_barcode_counts)
+    grouped = grouped.drop(columns=["tagValueMIVBC"], errors="ignore")
+    total_reads = grouped["readCount"].sum()
+    grouped["readFraction"] = (grouped["readCount"] / total_reads) if total_reads else 0
+    grouped = grouped.sort_values("readCount", ascending=False)
+    return grouped
+
+
+def barcode_hopping_filter(df, percentage, mode="bulk"):
     """Remove VBCs with low reads relative to other VBCs of the same clonotype."""
     print("Running barcode hopping filtering...")
-    df = pd.read_csv(input_file, sep="\t", low_memory=False)
+    df = df.copy()  # don't mutate the caller's frame (group_max is added below)
     if mode == "single_cell":
         group_cols = ["cloneId", "tagValueMIWELLNAME"]
     else:
@@ -328,12 +349,8 @@ def reads_per_clonotype_filter(df, output_prefix, default_low_thresh, mode="bulk
     clones_to_keep = clone_total_reads[clone_total_reads["keep"]][group_cols]
     final_data = df.merge(clones_to_keep, on=group_cols, how="inner").copy()
 
-    # One row per clone: keep metadata (first), sum readCount, recompute barcode_count
-    grouped_final_data = final_data.groupby(group_cols).first().reset_index()
-    grouped_final_data["readCount"] = final_data.groupby(group_cols)["readCount"].sum().values
-    grouped_final_data["barcode_count"] = grouped_final_data.set_index(group_cols).index.map(clone_barcode_counts)
-    grouped_final_data = grouped_final_data.drop(columns=["tagValueMIVBC"], errors="ignore")
-    grouped_final_data = grouped_final_data.sort_values("readCount", ascending=False)
+    # Collapse the surviving rows to one row per clone (shared block schema).
+    grouped_final_data = collapse_to_one_row_per_clone(final_data, group_cols)
 
     original_rows = df.shape[0]
     original_rows_readSum = int(df["readCount"].sum())
@@ -352,6 +369,7 @@ def reads_per_clonotype_filter(df, output_prefix, default_low_thresh, mode="bulk
 def main(input_file, output_prefix, mode="bulk"):
     """Block entry point: filter.py <input.tsv> <output_prefix> [--mode bulk]."""
     default_low_thresh = 2  # default VBC read threshold
+    group_cols = ["cloneId", "tagValueMIWELLNAME"] if mode == "single_cell" else ["cloneId"]
 
     if not os.path.exists(input_file):
         print(f"Error: Input file not found: {input_file}", file=sys.stderr)
@@ -360,6 +378,7 @@ def main(input_file, output_prefix, mode="bulk"):
     output_file = f"{output_prefix}.tsv"
     maximas_file = f"{output_prefix}.kde.maximas.txt"
 
+    # Read the input once; qc and barcode-hopping operate on this frame (no re-reads).
     df_in = pd.read_csv(input_file, sep="\t", low_memory=False)
 
     # Empty input -> valid empty output (block schema) + empty maximas
@@ -370,23 +389,19 @@ def main(input_file, output_prefix, mode="bulk"):
         open(maximas_file, "w").close()
         return
 
-    # QC fail -> pass the raw input through unfiltered + empty maximas
-    if not qc_mixcr_output(input_file):
-        print("QC failed (too few clonotypes). Passing input through unfiltered.")
-        df_in.to_csv(output_file, sep="\t", index=False)
+    # QC fail -> skip the statistical read filtering, but still collapse to the block's
+    # one-row-per-clone schema (drop tagValueMIVBC, recompute readFraction) so downstream
+    # aggregate-abundance does not sum readFraction over per-molecule rows + empty maximas.
+    if not qc_mixcr_output(df_in):
+        print("QC failed (too few clonotypes). Collapsing to one row per clone, no read filtering.")
+        collapse_to_one_row_per_clone(df_in, group_cols).to_csv(output_file, sep="\t", index=False)
         open(maximas_file, "w").close()
         return
 
-    # Full VBC filtering path
+    # Full VBC filtering path. readFraction is recomputed inside the shared collapse.
     percentage = 5  # barcode hopping cutoff
-    df_bcHop = barcode_hopping_filter(input_file, percentage, mode=mode)
+    df_bcHop = barcode_hopping_filter(df_in, percentage, mode=mode)
     df_filtered = reads_per_clonotype_filter(df_bcHop, output_prefix, default_low_thresh, mode=mode)
-
-    # Preserve the block's downstream schema: recompute readFraction over surviving clones
-    # (filtering changed the read total, so the carried-through value is stale).
-    total_reads = df_filtered["readCount"].sum()
-    df_filtered["readFraction"] = (df_filtered["readCount"] / total_reads) if total_reads else 0
-    df_filtered = df_filtered.sort_values("readCount", ascending=False)
     df_filtered.to_csv(output_file, sep="\t", index=False)
     print(f"Filtered data saved to {output_file}")
 
