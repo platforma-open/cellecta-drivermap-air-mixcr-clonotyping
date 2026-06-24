@@ -39,7 +39,7 @@ const data = reactive<{
   sampleReportOpen: boolean;
   selectedSample: string | undefined;
 }>({
-  settingsOpen: false,
+  settingsOpen: app.model.data.input === undefined,
   sampleReportOpen: false,
   selectedSample: undefined,
 });
