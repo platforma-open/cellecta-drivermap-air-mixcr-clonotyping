@@ -45,6 +45,12 @@ vbcProcessingTpl := assets.importTemplate(":vbc-processing")
 aggClonesTpl := assets.importTemplate(":agg-clones")
 
 /**
+ * Sum abundance columns per clonotypeKey within each sample, so the per-sample abundancePf
+ * import sees a unique clonotypeKey (mixcr can emit several clones sharing one key).
+ */
+aggregateAbundanceTpl := assets.importTemplate(":aggregate-abundance")
+
+/**
  * Chains conventions.
  */
 chainInfos := {
@@ -291,7 +297,21 @@ self.body(func(inputs) {
 			},
 			name: "cloneTableTsv",
 			path: ["tsv"]
-		}, {
+		} ]
+
+		// Run VBC filter + normalization; produces the per-clone table.
+		vbcProcessingResults := pframes.processColumn(
+			exportResults.output("cloneTableTsv"),
+			vbcProcessingTpl,
+			vbcProcessingOutputs,
+			{
+				extra: {}
+			}
+		)
+
+		// Abundance p-frame: collapse the per-clone table to one row per clonotypeKey (sum
+		// abundance) so the import sees a unique clonotypeKey axis. Per sample (no aggregation).
+		abundanceProcessingOutputs := [ {
 			/////////////////////// Abundance columns ///////////////////////
 			type: "Xsv",
 			xsvType: "tsv",
@@ -305,11 +325,10 @@ self.body(func(inputs) {
 			path: ["tsv"]
 		} ]
 
-		// Run mixcr export & VBC normalization script
-		vbcProcessingResults := pframes.processColumn(
-			exportResults.output("cloneTableTsv"),
-			vbcProcessingTpl,
-			vbcProcessingOutputs,
+		abundanceResults := pframes.processColumn(
+			vbcProcessingResults.output("cloneTableTsv"),
+			aggregateAbundanceTpl,
+			abundanceProcessingOutputs,
 			{
 				extra: {}
 			}
@@ -351,7 +370,7 @@ self.body(func(inputs) {
 		)
 
 		// only adding data outputs if we are in bulk mode
-		vbcProcessingResults.addXsvOutputToBuilder(clonotypes, "abundancePf", "abundancePf/" + chain + "/")
+		abundanceResults.addXsvOutputToBuilder(clonotypes, "abundancePf", "abundancePf/" + chain + "/")
 		aggregateByCloneKey.addXsvOutputToBuilder(clonotypes, "byCloneKey", "byCloneKey/" + chain + "/")
 	}
 
