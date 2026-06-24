@@ -346,10 +346,28 @@ abundanceColumns := func(preset, blockId) {
 		}
 	} ]
 
+	// ============================================================================
+	// Molecule-count abundances (templateEstimate / templateEstimateFraction).
+	//
+	// allowNA: true is REQUIRED. When VBC=1/2/3 normalization is all unreliable for a
+	// sample, vbc-normalization emits the literal "NA" for these columns for every clone
+	// in that sample (a per-sample degenerate condition, faithful to upstream). With
+	// allowNA: false the pfconv "Binary" import hard-errors ("N/A value: NA not allowed")
+	// and fails the whole multi-sample run on a single bad sample; allowNA: true imports
+	// the cell as null instead. (readCount/readFraction stay allowNA: false — MiXCR always
+	// emits a valid value for them.)
+	//
+	// TODO(MILAB-6335 — Layer C / follow-up): this degradation is currently SILENT.
+	// Downstream blocks read null molecule counts as 0 (e.g. repertoire-diversity does
+	// fill_null(0)), so an unreliable-normalization sample quietly looks like an empty
+	// repertoire in molecule-based views, and the only "unreliable" signal is a
+	// vbc-filtering stdout warning the user never sees in the UI. Surface a per-sample
+	// QC flag / notification so the analyst knows molecule counts are missing for it.
+	// ============================================================================
 	abundanceColumnSpecs += [ {
 		column: "templateEstimate",
 		id: "template-estimate",
-		allowNA: false,
+		allowNA: true,
 		spec: {
 			name: "pl7.app/vdj/uniqueMoleculeCount",
 			valueType: "Long",
@@ -366,7 +384,7 @@ abundanceColumns := func(preset, blockId) {
 	}, {
 		column: "templateEstimateFraction",
 		id: "template-estimate-fraction",
-		allowNA: false,
+		allowNA: true, // see molecule-count note above: "NA" on degenerate normalization
 		spec: {
 			name: "pl7.app/vdj/uniqueMoleculeFraction",
 			valueType: "Double",
@@ -383,12 +401,19 @@ abundanceColumns := func(preset, blockId) {
 	} ]
 
 
-	mainAbundanceColumn := "templateEstimate"
+	// Representative-clone ranking column for the by-clone-key aggregation (agg-clones
+	// max_by). MUST be a column that is never NA: ptransform ranks via pandas idxmax, and
+	// an all-NaN ranking group — a clonotype seen only in unreliable-normalization
+	// sample(s), where templateEstimate is "NA" — makes idxmax return NaN, then
+	// data.loc[NaN] raises KeyError and crashes the run. readCount is always present
+	// (MiXCR emits it for every clone) and, within a sample, orders identically to
+	// templateEstimate (templateEstimate = readCount / normFactor).
+	rankingColumn := "readCount"
 
 	return {
 		mixcrExportArgs : mixcrExportArgs,
 		abundanceColumnSpecs: abundanceColumnSpecs,
-		mainAbundanceColumn: mainAbundanceColumn
+		rankingColumn: rankingColumn
 	}
 }
 
@@ -456,7 +481,7 @@ getExportParams := func(preset, blockId) {
 	return {
 		keyColumns: presetInfo.keyColumns,
 		abundanceColumnSpecs: abundanceColumns.abundanceColumnSpecs,
-		mainAbundanceColumn: abundanceColumns.mainAbundanceColumn,
+		rankingColumn: abundanceColumns.rankingColumn,
 		mixcrExportArgs: mixcrExportArgs,
 		keyAxesSpec: keyAxesSpec,
 		cloneColumnSpecs: cloneColumns.cloneColumnSpecs

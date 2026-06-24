@@ -17,7 +17,7 @@ self.body(func(inputs) {
 
 	ll.assert(inputDataMeta.keyLength == 1, "unexpected number of aggregation axes")
 
-	mainAbundanceColumn := inputs.mainAbundanceColumn
+	rankingColumn := inputs.rankingColumn
 	cloneColumnSpecs := inputs.cloneColumnSpecs
 
 	// Adding clonotypeKey column
@@ -27,7 +27,7 @@ self.body(func(inputs) {
 			groupBy: ["clonotypeKey"],
 			aggregations: [ {
 				type: "max_by",
-				rankingCol: mainAbundanceColumn,
+				rankingCol: rankingColumn,
 				pickCols: slices.map(cloneColumnSpecs, func(col) {
 					return [col, col]
 				})

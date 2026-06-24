@@ -220,8 +220,8 @@ self.body(func(inputs) {
 	keyColumns := exportParams.keyColumns
 	// tsv column names corresponding to abundanceArgs
 	abundanceColumns := exportParams.abundanceColumns
-	// main abundance column name
-	mainAbundanceColumn := exportParams.mainAbundanceColumn
+	// representative-clone ranking column for by-clone-key aggregation (never-NA; see get-export-params)
+	rankingColumn := exportParams.rankingColumn
 
 	// `mixcr export` args
 	mixcrExportArgs := exportParams.mixcrExportArgs
@@ -341,8 +341,8 @@ self.body(func(inputs) {
 			aggregationOutputs,
 			{
 				aggregate: ["pl7.app/sampleId"],
-				extra: {	
-					mainAbundanceColumn: mainAbundanceColumn,
+				extra: {
+					rankingColumn: rankingColumn,
 					cloneColumnSpecs: slices.map(cloneColumnSpecs, func(col) {
 						return col.column
 					})

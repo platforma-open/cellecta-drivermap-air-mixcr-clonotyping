@@ -1,0 +1,71 @@
+// Regression tests for the unreliable-VBC-normalization handling (MILAB-6335).
+//
+// When VBC=1/2/3 normalization is all unreliable for a sample, vbc-normalization emits
+// the literal "NA" for templateEstimate / templateEstimateFraction for every clone in
+// that sample. Two consumers must tolerate that:
+//
+//   Layer A — the abundancePf xsv import (storageFormat "Binary" -> pfconv) declares
+//             these two columns. Under allowNA:false pfconv hard-errors on "NA"
+//             ("N/A value: NA not allowed", exit 1), failing the whole run. They MUST be
+//             allowNA:true so the cell imports as null instead.
+//   Layer B1 — agg-clones ranks a representative clone per clonotypeKey with ptransform
+//             max_by, which ranks via pandas idxmax. A ranking column that can be NA
+//             produces an all-NaN group (a clonotype seen only in unreliable samples) ->
+//             idxmax returns NaN -> data.loc[NaN] KeyError. The ranking column MUST be a
+//             never-NA column (readCount), not templateEstimate.
+//
+// These guard against either fix being silently reverted. (The "NA is emitted" half of
+// the contract is covered by vbc-normalization's test_nan_normfactor_yields_na.)
+
+test := import("@platforma-sdk/workflow-tengo:test")
+getExports := import(":get-export-params")
+
+// Any V2 preset exercises the same abundance specs / ranking column.
+preset := "cellecta-human-rna-xcr-mivbc-drivermap-air-v2"
+blockId := "test-block"
+
+findCol := func(specs, colName) {
+	for s in specs {
+		if s.column == colName {
+			return s
+		}
+	}
+	return undefined
+}
+
+// Layer A: the molecule-count columns must accept NA (import as null), or pfconv fails
+// the whole multi-sample run on a single unreliable-normalization sample.
+Test_molecule_columns_allow_na := func() {
+	specs := getExports.getExportParams(preset, blockId).abundanceColumnSpecs
+
+	te := findCol(specs, "templateEstimate")
+	test.isTrue(!is_undefined(te), "templateEstimate must exist in abundanceColumnSpecs")
+	test.isEqual(true, te.allowNA,
+		"templateEstimate must be allowNA:true (pfconv hard-errors on the \"NA\" emitted when normalization is unreliable)")
+
+	tef := findCol(specs, "templateEstimateFraction")
+	test.isTrue(!is_undefined(tef), "templateEstimateFraction must exist in abundanceColumnSpecs")
+	test.isEqual(true, tef.allowNA, "templateEstimateFraction must be allowNA:true")
+}
+
+// The read-based columns are always emitted by MiXCR and must stay strict, so a genuinely
+// malformed export is still caught. This locks in the deliberate molecule-vs-read split.
+Test_read_columns_stay_strict := func() {
+	specs := getExports.getExportParams(preset, blockId).abundanceColumnSpecs
+
+	rc := findCol(specs, "readCount")
+	test.isTrue(!is_undefined(rc), "readCount must exist in abundanceColumnSpecs")
+	test.isEqual(false, rc.allowNA, "readCount must stay allowNA:false (MiXCR always emits it)")
+
+	rf := findCol(specs, "readFraction")
+	test.isTrue(!is_undefined(rf), "readFraction must exist in abundanceColumnSpecs")
+	test.isEqual(false, rf.allowNA, "readFraction must stay allowNA:false")
+}
+
+// Layer B1: the agg-clones ranking column must be a never-NA column, or pandas idxmax
+// crashes on an all-NaN group from an unreliable-normalization sample.
+Test_ranking_column_is_never_na := func() {
+	rankingColumn := getExports.getExportParams(preset, blockId).rankingColumn
+	test.isEqual("readCount", rankingColumn,
+		"rankingColumn must be readCount (never-NA); templateEstimate can be \"NA\" and crashes ptransform idxmax")
+}
