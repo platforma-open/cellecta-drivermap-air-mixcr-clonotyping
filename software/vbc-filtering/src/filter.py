@@ -153,6 +153,16 @@ def find_kde_mimima_threshold(data, default_low_thresh, min_valley_depth=0.10):
         top_two_max = sorted_maxima[:2]
         left_max, right_max = sorted(top_two_max)
         between_minima = minima[(minima > left_max) & (minima < right_max)]
+        if between_minima.size == 0:
+            # no valley between the two peaks (flat region on the discrete grid) -> default
+            return (
+                default_low_thresh,
+                10 ** x[left_max][0],
+                10 ** x[right_max][0],
+                np.exp(log_dens[default_low_thresh]),
+                np.exp(log_dens[left_max]),
+                np.exp(log_dens[right_max]),
+            )
         selected_min = between_minima[np.argmin(log_dens[between_minima])]
 
     elif len(maxima) > 2:
@@ -180,6 +190,16 @@ def find_kde_mimima_threshold(data, default_low_thresh, min_valley_depth=0.10):
             right_maximas = maxima[maxima > selected_min]
             left_max = left_maximas[np.argmax(log_dens[left_maximas])]
             right_max = right_maximas[np.argmax(log_dens[right_maximas])]
+        else:
+            # no valley between the outermost peaks (flat grid) -> default
+            return (
+                default_low_thresh,
+                10 ** x[leftmost_max][0],
+                10 ** x[rightmost_max][0],
+                np.exp(log_dens[default_low_thresh]),
+                np.exp(log_dens[leftmost_max]),
+                np.exp(log_dens[rightmost_max]),
+            )
 
     # Valley-depth gate: a too-shallow valley is treated as a single peak
     min_log_dens = log_dens[selected_min]
@@ -293,7 +313,7 @@ def reads_per_clonotype_filter(df, output_prefix, default_low_thresh, mode="bulk
             previousThresholdFoldx = False
 
         # next threshold 20x above current
-        if thresholds[current_key] is not default_low_thresh and current_key < len(sorted_keys):
+        if thresholds[current_key] is not default_low_thresh and i + 1 < len(sorted_keys):
             next_key = sorted_keys[i + 1]
             if thresholds[next_key] is not default_low_thresh:
                 nextThresholdFoldx = thresholds[next_key] > 20 * thresholds[current_key]

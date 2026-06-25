@@ -11,6 +11,7 @@ need no test bed, and register in coverage. Not marked slow.
 
 import math
 
+import numpy as np
 import pandas as pd
 from filter import find_kde_mimima_threshold
 from hypothesis import given, settings
@@ -48,4 +49,30 @@ def test_degenerate_bin_falls_back_to_default():
 def test_zero_variance_bin_falls_back_to_default():
     """Enough points but zero spread (all identical) → bandwidth 0 → default_low_thresh."""
     result = find_kde_mimima_threshold(pd.Series([100] * 30, dtype="int64"), DEFAULT_LOW_THRESH)
+    assert result[0] == DEFAULT_LOW_THRESH
+
+
+def _forced_extrema(maxima_idx, minima_idx):
+    """Fake argrelextrema returning fixed maxima/minima, to exercise the empty-valley paths."""
+
+    def fake(arr, comparator, *args, **kwargs):
+        idx = maxima_idx if comparator is np.greater else minima_idx
+        return (np.asarray(idx, dtype=int),)
+
+    return fake
+
+
+def test_two_maxima_no_valley_falls_back(monkeypatch):
+    """len(maxima) == 2 with no minimum between the peaks → default, not a ValueError."""
+    monkeypatch.setattr("filter.argrelextrema", _forced_extrema([100, 900], []))
+    result = find_kde_mimima_threshold(pd.Series(range(1, 300), dtype="int64"), DEFAULT_LOW_THRESH)
+    assert len(result) == 6
+    assert result[0] == DEFAULT_LOW_THRESH
+
+
+def test_many_maxima_no_valley_falls_back(monkeypatch):
+    """len(maxima) > 2 with no minimum between the outermost peaks → default, not a NameError."""
+    monkeypatch.setattr("filter.argrelextrema", _forced_extrema([100, 500, 900], []))
+    result = find_kde_mimima_threshold(pd.Series(range(1, 300), dtype="int64"), DEFAULT_LOW_THRESH)
+    assert len(result) == 6
     assert result[0] == DEFAULT_LOW_THRESH
