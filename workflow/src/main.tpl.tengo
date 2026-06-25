@@ -40,10 +40,13 @@ wf.body(func(args) {
 			qc: pframes.exportColumnData(runMixcr.output("qc.data")),
 			reports: pframes.exportColumnData(runMixcr.output("reports.data")),
 			// `clones` is surfaced in outputs (in addition to exports, which feeds downstream
-			// blocks) so the model's isRunning/isErrored can observe the VBC pipeline's
-			// readiness and error state. The model reads only ctx.outputs, never exports, so a
-			// post-MiXCR failure landing solely in exports would otherwise paint a green "Done".
-			clones: clonotypes
+			// blocks) so the model's isRunning waits on the VBC pipeline (not just the MiXCR
+			// analyze outputs). The model reads only ctx.outputs, never exports. A p-frame in
+			// outputs must be wrapped with exportFrame (a raw frame is only valid in exports);
+			// cf. mixcr-amplicon-alignment / mixcr-scfv-clonotyping. NOTE: getError() on this
+			// frame does not surface per-chain sub-resource errors, so isErrored still does not
+			// detect a VBC-step failure inside the frame — see follow-up.
+			clones: pframes.exportFrame(clonotypes)
 		},
 		exports: exports
 	}
