@@ -19,7 +19,7 @@ Sources (all in `workflow/src/`):
 - `mixcr-export.tpl.tengo` — `mixcr exportClones` args + `-cloneId` + `-tags Molecule`; then `hash-column` adds `clonotypeKey`.
 - `vbc-processing.tpl.tengo` — the two script CLIs.
 - `process.tpl.tengo` — how the vbc output feeds `abundancePf` (Xsv) and `agg-clones` → `byCloneKey`.
-- `agg-clones.tpl.tengo` — ptransform `max_by` ranked by `templateEstimate`, grouped on `clonotypeKey`, picking the clone columns.
+- `agg-clones.tpl.tengo` — ptransform `max_by` ranked by `readCount` (the never-NA ranking column; see `get-export-params.lib.tengo`), grouped on `clonotypeKey`, picking the clone columns.
 
 ## Tag column: `tagValueMIVBC` (NOT `tagValueMIBC`)
 
@@ -56,7 +56,7 @@ The vbc-processing output TSV is consumed two ways in `process.tpl.tengo`, so it
 carry every column below or those imports fail:
 
 1. **`abundancePf`** — Xsv import keyed on the `clonotypeKey` axis, reading the four abundance columns.
-2. **`byCloneKey`** — `agg-clones` ptransform: `max_by` ranked on `templateEstimate`, grouped on `clonotypeKey`, picking the clone columns (`cloneColumnSpecs[].column`).
+2. **`byCloneKey`** — `agg-clones` ptransform: `max_by` ranked on `readCount`, grouped on `clonotypeKey`, picking the clone columns (`cloneColumnSpecs[].column`).
 
 ### Axis
 - `clonotypeKey` — **required** (carried through from input, one value per `cloneId`).
@@ -69,7 +69,12 @@ carry every column below or those imports fail:
 | `templateEstimate` | `normalize.py` | Long ≥ 1 (or `NA` when normFactor is `nan`) |
 | `templateEstimateFraction` | `normalize.py` — `templateEstimate / templateEstimate.sum()` | Double (0,1] (or `NA`) |
 
-`templateEstimate` is `mainAbundanceColumn` (the agg ranking column) — it must be present and numeric for `agg-clones` to rank.
+`agg-clones` ranks (`max_by`) on **`readCount`**, not `templateEstimate`. `readCount` is
+the never-NA ranking column (see `get-export-params.lib.tengo`): `templateEstimate` is `NA`
+on samples whose VBC normalization is unreliable, and an all-NA group makes pandas `idxmax`
+return `NaN` → `data.loc[NaN]` → `KeyError`, crashing the by-clone-key aggregation. The four
+abundance columns above must still all be present (numeric, or the literal `NA` for the two
+`templateEstimate*` columns) for the `abundancePf` import, but ranking uses `readCount`.
 
 ### Clone columns (12 unique) — `cloneColumnSpecs[].column`
 Carried through from input by `filter.py` (one row per surviving `cloneId`):

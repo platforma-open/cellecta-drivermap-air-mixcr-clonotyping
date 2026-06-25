@@ -62,7 +62,7 @@ matplotlib/seaborn for upstream main's histogram):
 ```bash
 # one-time
 uv venv --python 3.12 .venv
-uv pip install --python .venv pandas==2.2.3 numpy==2.2.4 scikit-learn==1.6.1 scipy==1.15.2 matplotlib seaborn
+uv pip install --python .venv pandas==2.2.3 numpy==2.2.6 scikit-learn==1.6.1 scipy==1.15.3 matplotlib seaborn
 
 # upstream main (reference). filter: <input> <out-dir> <sample> --mode bulk
 .venv/bin/python reference/filter_main.py clones_main.tsv out main --mode bulk

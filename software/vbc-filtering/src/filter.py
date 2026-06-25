@@ -92,6 +92,15 @@ def barcode_hopping_filter(df, percentage, mode="bulk"):
     return filtered_df
 
 
+def _kde_point(idx, x, log_dens):
+    """Return (read-count location, KDE density) at KDE grid index `idx`.
+
+    Collapses the `10 ** x[idx][0]` / `np.exp(log_dens[idx])` pair that the
+    threshold / left-peak / right-peak tuple repeats on every return path.
+    """
+    return 10 ** x[idx][0], np.exp(log_dens[idx])
+
+
 def find_kde_mimima_threshold(data, default_low_thresh, min_valley_depth=0.10):
     """Find a read-count threshold for a VBC bin via KDE minima detection.
 
@@ -99,7 +108,11 @@ def find_kde_mimima_threshold(data, default_low_thresh, min_valley_depth=0.10):
         (threshold cutoff, left peak max, right peak max,
          threshold cutoff KDE value, left peak max KDE value, right peak max KDE value)
     Degenerate bins (<10 points, zero/NaN bandwidth, no maxima) fall back to
-    `default_low_thresh` — the function never returns None.
+    `default_low_thresh` — the function never returns None. On any fall-back path the
+    threshold is `default_low_thresh`, not a detected minimum, so its KDE value is `nan`
+    (there is no density at a cutoff that did not come from the curve); the reliability
+    check (`is_normalization_unreliable`) NaN-gates such a bin as unreliable, which is the
+    conservative, correct behaviour.
     """
     if len(data) < 10:
         return (default_low_thresh, float("nan"), float("nan"), float("nan"), float("nan"), float("nan"))
@@ -128,25 +141,14 @@ def find_kde_mimima_threshold(data, default_low_thresh, min_valley_depth=0.10):
         left_max = 0  # first peak treated as non-existent at 0
         right_max = maxima[0]
         between_minima = minima[(minima > left_max) & (minima < right_max)]
+        left_loc, left_dens = _kde_point(left_max, x, log_dens)
+        right_loc, right_dens = _kde_point(right_max, x, log_dens)
         if between_minima.size > 0:
             selected_min = between_minima[np.argmin(log_dens[between_minima])]
-            return (
-                10 ** x[selected_min][0],
-                10 ** x[left_max][0],
-                10 ** x[right_max][0],
-                np.exp(log_dens[selected_min]),
-                np.exp(log_dens[left_max]),
-                np.exp(log_dens[right_max]),
-            )
+            thr_loc, thr_dens = _kde_point(selected_min, x, log_dens)
+            return (thr_loc, left_loc, right_loc, thr_dens, left_dens, right_dens)
         # unlikely (a maximum implies a low point) -> fall back to default
-        return (
-            default_low_thresh,
-            10 ** x[left_max][0],
-            10 ** x[right_max][0],
-            np.exp(log_dens[default_low_thresh]),
-            np.exp(log_dens[left_max]),
-            np.exp(log_dens[right_max]),
-        )
+        return (default_low_thresh, left_loc, right_loc, float("nan"), left_dens, right_dens)
 
     if len(maxima) == 2:
         sorted_maxima = maxima[np.argsort(-log_dens[maxima])]
@@ -155,14 +157,9 @@ def find_kde_mimima_threshold(data, default_low_thresh, min_valley_depth=0.10):
         between_minima = minima[(minima > left_max) & (minima < right_max)]
         if between_minima.size == 0:
             # no valley between the two peaks (flat region on the discrete grid) -> default
-            return (
-                default_low_thresh,
-                10 ** x[left_max][0],
-                10 ** x[right_max][0],
-                np.exp(log_dens[default_low_thresh]),
-                np.exp(log_dens[left_max]),
-                np.exp(log_dens[right_max]),
-            )
+            left_loc, left_dens = _kde_point(left_max, x, log_dens)
+            right_loc, right_dens = _kde_point(right_max, x, log_dens)
+            return (default_low_thresh, left_loc, right_loc, float("nan"), left_dens, right_dens)
         selected_min = between_minima[np.argmin(log_dens[between_minima])]
 
     elif len(maxima) > 2:
@@ -192,14 +189,9 @@ def find_kde_mimima_threshold(data, default_low_thresh, min_valley_depth=0.10):
             right_max = right_maximas[np.argmax(log_dens[right_maximas])]
         else:
             # no valley between the outermost peaks (flat grid) -> default
-            return (
-                default_low_thresh,
-                10 ** x[leftmost_max][0],
-                10 ** x[rightmost_max][0],
-                np.exp(log_dens[default_low_thresh]),
-                np.exp(log_dens[leftmost_max]),
-                np.exp(log_dens[rightmost_max]),
-            )
+            left_loc, left_dens = _kde_point(leftmost_max, x, log_dens)
+            right_loc, right_dens = _kde_point(rightmost_max, x, log_dens)
+            return (default_low_thresh, left_loc, right_loc, float("nan"), left_dens, right_dens)
 
     # Valley-depth gate: a too-shallow valley is treated as a single peak
     min_log_dens = log_dens[selected_min]
@@ -207,25 +199,14 @@ def find_kde_mimima_threshold(data, default_low_thresh, min_valley_depth=0.10):
     right_peak = log_dens[right_max]
     peak_max_lower = min(left_peak, right_peak)
     relative_depth = abs((peak_max_lower - min_log_dens) / peak_max_lower)
+    right_loc, right_dens = _kde_point(right_max, x, log_dens)
     if relative_depth >= min_valley_depth:
-        return (
-            10 ** x[selected_min][0],
-            10 ** x[left_max][0],
-            10 ** x[right_max][0],
-            np.exp(log_dens[selected_min]),
-            np.exp(log_dens[left_max]),
-            np.exp(log_dens[right_max]),
-        )
-    else:
-        zero_left_max = 0
-        return (
-            default_low_thresh,
-            zero_left_max,
-            10 ** x[right_max][0],
-            np.exp(log_dens[default_low_thresh]),
-            np.exp(log_dens[zero_left_max]),
-            np.exp(log_dens[right_max]),
-        )
+        thr_loc, thr_dens = _kde_point(selected_min, x, log_dens)
+        left_loc, left_dens = _kde_point(left_max, x, log_dens)
+        return (thr_loc, left_loc, right_loc, thr_dens, left_dens, right_dens)
+    # shallow valley -> treat as a single peak: left "peak" pinned at grid index 0, threshold
+    # falls back to default (its KDE value is nan, as on every fall-back path)
+    return (default_low_thresh, 0, right_loc, float("nan"), np.exp(log_dens[0]), right_dens)
 
 
 def is_normalization_unreliable(

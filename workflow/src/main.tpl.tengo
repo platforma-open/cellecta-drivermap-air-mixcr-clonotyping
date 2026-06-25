@@ -23,8 +23,11 @@ wf.body(func(args) {
 		receptorsOrChains: receptorsOrChains
 	})
 
+	// The VBC/clonotype pipeline result (mixcr export -> VBC filter/normalize -> aggregate).
+	clonotypes := runMixcr.output("clonotypes")
+
 	exports := {
-		clones: runMixcr.output("clonotypes"),
+		clones: clonotypes,
 		clns: {
 			spec: runMixcr.output("clns.spec"),
 			data: runMixcr.output("clns.data")
@@ -35,7 +38,12 @@ wf.body(func(args) {
 		outputs: {
 			logs: runMixcr.output("logs.data"),
 			qc: pframes.exportColumnData(runMixcr.output("qc.data")),
-			reports: pframes.exportColumnData(runMixcr.output("reports.data"))
+			reports: pframes.exportColumnData(runMixcr.output("reports.data")),
+			// `clones` is surfaced in outputs (in addition to exports, which feeds downstream
+			// blocks) so the model's isRunning/isErrored can observe the VBC pipeline's
+			// readiness and error state. The model reads only ctx.outputs, never exports, so a
+			// post-MiXCR failure landing solely in exports would otherwise paint a green "Done".
+			clones: clonotypes
 		},
 		exports: exports
 	}
