@@ -37,6 +37,15 @@ dev = [
 # uv via setup-uv for reproducibility.
 required-version = ">=0.11.16"
 
+# polars-hash depends on the regular `polars` distribution with no version pin, which uv
+# otherwise resolves to the latest (1.41.x). That gets installed alongside the pinned
+# polars-lts-cpu 1.30.0 — both distributions ship the `polars` import package, so on Linux
+# the dev venv becomes a mix of two versions and `import polars` breaks (e.g. NoPickleOption).
+# Constrain the transitive polars to the same version as polars-lts-cpu so the (unavoidable)
+# co-install is version-consistent. Production is unaffected: each src/requirements.txt is
+# compiled with `--no-deps`, so only polars-lts-cpu ships there, never the regular polars.
+constraint-dependencies = ["polars==1.30.0"]
+
 [tool.pytest.ini_options]
 # testpaths/pythonpath are relative to this file (the rootdir). Module names across the
 # src dirs don't collide (filter / normalize / main), so all three can share pythonpath.
