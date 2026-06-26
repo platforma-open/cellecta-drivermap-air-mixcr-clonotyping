@@ -44,9 +44,14 @@ wf.body(func(args) {
 			// analyze outputs). The model reads only ctx.outputs, never exports. A p-frame in
 			// outputs must be wrapped with exportFrame (a raw frame is only valid in exports);
 			// cf. mixcr-amplicon-alignment / mixcr-scfv-clonotyping. NOTE: getError() on this
-			// frame does not surface per-chain sub-resource errors, so isErrored still does not
-			// detect a VBC-step failure inside the frame — see follow-up.
-			clones: pframes.exportFrame(clonotypes)
+			// frame does not surface per-chain sub-resource errors — a failed VBC step is
+			// instead detected via `vbcStatus` below.
+			clones: pframes.exportFrame(clonotypes),
+
+			// Per-chain VBC step status (a nested ResourceMap: [chain] -> per-sample
+			// cloneTableTsv ResourceMap), surfaced raw like `logs`. The model walks both
+			// levels and detects a failed VBC Python step that the clones exportFrame hides.
+			vbcStatus: runMixcr.output("vbcStatus")
 		},
 		exports: exports
 	}

@@ -8,6 +8,7 @@ self := import("@platforma-sdk/workflow-tengo:tpl")
 ll := import("@platforma-sdk/workflow-tengo:ll")
 assets := import("@platforma-sdk/workflow-tengo:assets")
 pframes := import("@platforma-sdk/workflow-tengo:pframes")
+pcolumn := import("@platforma-sdk/workflow-tengo:pframes.pcolumn")
 slices := import("@platforma-sdk/workflow-tengo:slices")
 maps := import("@platforma-sdk/workflow-tengo:maps")
 
@@ -233,6 +234,15 @@ self.body(func(inputs) {
 
 	// build clonotypes p-frame builder
 	clonotypes := pframes.pFrameBuilder()
+
+	// Per-chain VBC step status, surfaced so the model can detect a failed VBC
+	// Python step (the per-chain errors are buried inside the clonotypes
+	// exportFrame, where getError on the binary-partitioned columns cannot reach
+	// them). Each entry's value is that chain's per-sample `cloneTableTsv`
+	// ResourceMap; when filter.py fails for a sample, that sample's resource is
+	// in an error state. Keyed by [chain]; the model walks both levels.
+	vbcStatusBuilder := pcolumn.resourceMapBuilder(1)
+
 	for chain in chains {
 		chainInfo := chainInfos[chain]
 		ll.assert(!is_undefined(chainInfo), "chainInfo not found for chain %v", chain)
@@ -299,6 +309,11 @@ self.body(func(inputs) {
 				extra: {}
 			}
 		)
+
+		// Carry this chain's per-sample VBC result (a ResourceMap keyed by
+		// sampleId) into the block-level status map so the model can spot a
+		// failed VBC step per sample.
+		vbcStatusBuilder.add([chain], vbcProcessingResults.outputData("cloneTableTsv"))
 
 		// Abundance p-frame: collapse the per-clone table to one row per clonotypeKey (sum
 		// abundance) so the import sees a unique clonotypeKey axis. Per sample (no aggregation).
@@ -374,6 +389,7 @@ self.body(func(inputs) {
 		"reports.data": mixcrResults.outputData("reports"),
 		"clns.spec": mixcrResults.outputSpec("clns"),
 		"clns.data": mixcrResults.outputData("clns"),
-		"clonotypes": clonotypes.build()
+		"clonotypes": clonotypes.build(),
+		"vbcStatus": vbcStatusBuilder.build()
 	}
 })

@@ -31,10 +31,12 @@ export const resultMap = computed(() => {
   // Block-level run state: true until the whole workflow (MiXCR + clone export +
   // the VBC Python step) finishes — not just MiXCR.
   const blockRunning = app.model.outputs.isRunning;
-  // Block-level error state: true once a workflow output has settled into an
-  // error. `blockRunning` goes false on both success and failure, so without
-  // this a failed post-MiXCR step would show a green "Done".
-  const blockErrored = app.model.outputs.isErrored;
+  // Block-level error state: true once the run has settled into a failure.
+  // `blockRunning` goes false on both success and failure, so without this a
+  // failed post-MiXCR step (e.g. the VBC Python step) would show a green "Done".
+  // Driven by the model's `clonotypingStatus` envelope — `ok === false` is a
+  // settled failure; `ok: true` / undefined means running-or-succeeded.
+  const blockErrored = app.model.outputs.clonotypingStatus?.ok === false;
 
   const resultMap = new Map<string, Result>();
 

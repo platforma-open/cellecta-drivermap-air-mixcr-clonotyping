@@ -104,17 +104,62 @@ export const platforma = BlockModelV3.create(dataModel)
 
   .output("isRunning", (ctx) => ctx.outputs?.getIsReadyOrError() === false)
 
-  // Block-level error signal: true once any workflow output has settled into an
-  // error — a failed clone export or VBC Python step after MiXCR succeeded, or
-  // MiXCR itself failing. `isRunning` alone cannot tell success from failure,
-  // because `getIsReadyOrError()` flips to `true` on both; the results table needs
-  // this to avoid a green "Done" on a failed run. Scanning every output field
-  // (rather than a hardcoded key list) keeps this correct when an output is added
-  // or renamed in `main.tpl.tengo`.
-  .output("isErrored", (ctx): boolean => {
+  // Block-level success/failure signal, exposed as an `OutputWithStatus` envelope
+  // so the UI can tell apart "running" (ok, value undefined) / "succeeded"
+  // (ok: true) / "failed" (ok: false) — the idiomatic V3 shape, replacing the old
+  // bespoke `isErrored` boolean. The lambda throws on a settled failure; the
+  // runtime turns the throw into `{ ok: false }`.
+  //
+  // Two failure channels are covered:
+  //   1. Any top-level workflow output field in an error state — MiXCR analyze /
+  //      export failing, or a broken `clones` frame root. Scanning every field
+  //      (not a hardcoded list) stays correct as outputs are added/renamed.
+  //   2. A failed VBC Python step. Those per-sample errors are buried inside the
+  //      `clones` exportFrame, where `getError()` on the binary-partitioned
+  //      columns cannot reach them, so the workflow surfaces them via `vbcStatus`
+  //      — a nested ResourceMap ([chain] -> per-sample cloneTableTsv). We walk
+  //      both levels; any entry in an error state means the run failed.
+  .outputWithStatus("clonotypingStatus", (ctx) => {
     const outputs = ctx.outputs;
-    if (outputs === undefined) return false;
-    return outputs.listOutputFields().some((key) => outputs.resolve(key)?.getError() !== undefined);
+    if (outputs === undefined) return undefined; // not started
+    // Judge only once the whole run has settled (success or error). While
+    // running, `getIsReadyOrError()` is false and we report ok/undefined.
+    if (!outputs.getIsReadyOrError()) return undefined;
+
+    // Channel 1: any output field root errored.
+    if (outputs.listOutputFields().some((key) => outputs.resolve(key)?.getError() !== undefined)) {
+      throw new Error("Clonotype processing failed. See per-sample logs for details.");
+    }
+
+    // Channel 2: a per-sample VBC step error inside the nested `vbcStatus` map.
+    // Wrapped defensively — `parseResourceMap` throws on an unexpected resource
+    // shape, and an unexpected shape must not crash this status output.
+    const vbc = outputs.resolve("vbcStatus");
+    if (vbc !== undefined) {
+      let vbcFailed = false;
+      try {
+        const byChain = parseResourceMap(
+          vbc,
+          (chainAcc) => {
+            const bySample = parseResourceMap(
+              chainAcc,
+              (entry) => (entry.getError() !== undefined ? true : undefined),
+              false,
+            );
+            return bySample.data.length > 0 ? true : undefined;
+          },
+          false,
+        );
+        vbcFailed = byChain.data.length > 0;
+      } catch {
+        vbcFailed = false;
+      }
+      if (vbcFailed) {
+        throw new Error("VBC clonotype processing failed for one or more samples.");
+      }
+    }
+
+    return true;
   })
 
   .sections((_ctx) => [{ type: "link", href: "/", label: "Main" }])
