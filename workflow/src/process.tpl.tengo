@@ -52,6 +52,10 @@ chainInfos := {
 	"IGLight": { mixcrFilter: "IGK,IGL", name: "IG Light", shortName: "Light" },
 	"TCRAlpha": { mixcrFilter: "TRA", name: "TCR Alpha", shortName: "Alpha" },
 	"TCRBeta": { mixcrFilter: "TRB", name: "TCR Beta", shortName: "Beta" },
+	// TODO: investigate suspected γ/δ locus swap. IMGT/MiXCR naming pairs γ with TRG and
+	// δ with TRD, but this map reverses them: Gamma->"TRD", Delta->"TRG". If wrong, TCRGD
+	// runs (a default chain group) mislabel their γ/δ output. Confirm against the kit's
+	// chain semantics — does DriverMap even produce γδ? — before swapping.
 	"TCRGamma": { mixcrFilter: "TRD", name: "TCR Gamma", shortName: "Gamma" },
 	"TCRDelta": { mixcrFilter: "TRG", name: "TCR Delta", shortName: "Delta" }
 }
