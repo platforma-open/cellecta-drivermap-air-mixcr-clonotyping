@@ -1,6 +1,7 @@
 {
   "name": "@platforma-open/cellecta.drivermap-mixcr-clonotyping.model",
   "version": "1.0.2",
+  "private": true,
   "description": "Block model",
   "type": "module",
   "main": "dist/index.cjs",
@@ -21,6 +22,7 @@
     "check": "ts-builder check --target block-model"
   },
   "dependencies": {
+    "@platforma-open/cellecta.drivermap-mixcr-clonotyping.kind": "workspace:*",
     "@platforma-sdk/model": "catalog:"
   },
   "devDependencies": {
