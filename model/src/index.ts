@@ -1,13 +1,31 @@
-import type { InferOutputsType, PlRef } from "@platforma-sdk/model";
+import type {
+  InferHrefType,
+  InferOutputsType,
+  PlDataTableStateV2,
+  PlRef,
+} from "@platforma-sdk/model";
 import {
   BlockModelV3,
+  ColumnsCollection,
   DataModelBuilder,
+  RT_RESOURCE_MAP,
+  TreeNodeAccessor,
+  createPlDataTableStateV2,
+  createPlDataTableV3,
   isPColumnSpec,
   parseResourceMap,
+  type PColumnKey,
+  type PColumnResourceMapData,
 } from "@platforma-sdk/model";
+import { kind } from "@platforma-open/cellecta.drivermap-mixcr-clonotyping.kind";
+import type { BlockArgs, StepResources } from "./args";
+import { StepResources as StepResourcesSchema } from "./args";
+import { ProgressPrefix } from "./progress";
+import type { PresetSupport, StepDefaults } from "./step-resources";
+import { dropEmptyOverrides } from "./step-resources";
 
-/** Workflow-relevant args projected out of {@link BlockData} by `.args`. */
-export type BlockArgs = {
+/** Legacy V1 args shape — consumed only by the legacy upgrader. */
+type LegacyArgs = {
   input?: PlRef;
   preset?: string;
   limitInput?: number;
@@ -15,46 +33,126 @@ export type BlockArgs = {
 };
 
 /** Legacy V1 UI-state shape — consumed only by the legacy upgrader. */
-export type LegacyUiState = {
+type LegacyUiState = {
   title?: string;
 };
 
-/**
- * Unified V3 block data: the workflow args plus the UI-only block title.
- * `title` is UI-only and never reaches the workflow (stripped in `.args`).
- */
-export type BlockData = BlockArgs & {
+/** The first V3 data shape: the V1 args plus the UI title. */
+type BlockDataV1 = LegacyArgs & {
   title?: string;
 };
 
-export const ProgressPrefix = "[==PROGRESS==]";
+export type BlockData = BlockDataV1 & {
+  perProcessMemGB?: number;
+  perProcessCPUs?: number;
+  stepResources?: StepResources;
+  /** The preset the "Per-step resources" settings last listed steps for. A snapshot taken on
+   * the operator's click, so the step plan runs once per click and never for an operator who
+   * did not ask. Absent until then. */
+  listStepsPreset?: string;
+  tableState: PlDataTableStateV2;
+};
 
-export const ProgressPattern =
-  /(?<stage>[^:]*):(?: *(?<progress>[0-9.]+)%)?(?: *ETA: *(?<eta>.+))?/;
-
-const dataModel = new DataModelBuilder()
-  .from<BlockData>("v1")
-  .upgradeLegacy<BlockArgs, LegacyUiState>(({ args, uiState }) => ({
+const dataModel = new DataModelBuilder({ kind })
+  .from<BlockDataV1>("v1")
+  .upgradeLegacy<LegacyArgs, LegacyUiState>(({ args, uiState }) => ({
     ...args,
     title: uiState.title,
   }))
-  .init(() => ({
-    chains: ["IG", "TCRAB", "TCRGD"],
-    title: "DriverMap™ AIR Profiling",
+  .migrate<BlockData>("v2", (v1) => ({ ...v1, tableState: createPlDataTableStateV2() }))
+  // `params` is absent when a block is created by hand rather than from a template, so every
+  // field the contract carries keeps its own default.
+  .init(({ params }) => ({
+    ...params,
+    chains: params?.chains ?? ["IG", "TCRAB", "TCRGD"],
+    title: params?.title ?? "DriverMap™ AIR Profiling",
+    tableState: createPlDataTableStateV2(),
   }));
 
-export const platforma = BlockModelV3.create(dataModel)
+/**
+ * Reads the per-sample `logs` column: a map of streams keyed by MiXCR step. Entries are keyed
+ * [sampleId, step]; a sample whose value is a single stream is keyed [sampleId].
+ */
+function parseSampleLogs<T>(
+  acc: TreeNodeAccessor | undefined,
+  parse: (acc: TreeNodeAccessor) => T | undefined,
+): PColumnResourceMapData<NonNullable<T>> | undefined {
+  if (acc === undefined) return undefined;
+  const data: { key: PColumnKey; value: NonNullable<T> }[] = [];
+  let isComplete = acc.getInputsLocked();
+  for (const sampleKey of acc.listInputFields()) {
+    const sample = acc.resolve({ field: sampleKey, assertFieldType: "Input" });
+    if (sample === undefined) {
+      isComplete = false;
+      continue;
+    }
+    const key = JSON.parse(sampleKey) as PColumnKey;
+    if (sample.resourceType.name === RT_RESOURCE_MAP) {
+      const steps = parseResourceMap(sample, parse, false);
+      isComplete &&= steps.isComplete;
+      for (const step of steps.data) data.push({ key: [...key, ...step.key], value: step.value });
+    } else {
+      const value = parse(sample);
+      if (value === undefined || value === null) isComplete = false;
+      else data.push({ key, value });
+    }
+  }
+  return { isComplete, data };
+}
+
+export const platforma = BlockModelV3.create({ dataModel, kind })
+
+  // Inverse of `init` — the same fields, projected back out for template export. `tableState`
+  // is view state, and a per-step override is tuned to one cluster, so neither crosses.
+  .templateParams((data) => ({
+    input: data.input,
+    preset: data.preset,
+    chains: data.chains,
+    limitInput: data.limitInput,
+    perProcessMemGB: data.perProcessMemGB,
+    perProcessCPUs: data.perProcessCPUs,
+    title: data.title,
+  }))
+
+  .prerunArgs((data) => ({
+    preset: data.preset,
+    // The step list is planned only for the preset the operator asked it for.
+    listSteps: data.listStepsPreset !== undefined && data.listStepsPreset === data.preset,
+  }))
 
   .args<BlockArgs>((data) => {
     if (data.input === undefined) throw new Error("Input dataset is required");
     if (data.preset === undefined) throw new Error("Preset is required");
+    if (data.chains.length === 0) throw new Error("Chains selection is required");
+    if (
+      data.stepResources !== undefined &&
+      !StepResourcesSchema.safeParse(data.stepResources).success
+    )
+      throw new Error("Per-step resources are invalid");
     return {
       input: data.input,
       preset: data.preset,
       limitInput: data.limitInput,
       chains: data.chains,
+      perProcessMemGB: data.perProcessMemGB,
+      perProcessCPUs: data.perProcessCPUs,
+      stepResources: dropEmptyOverrides(data.stepResources),
     };
   })
+
+  // Whether the block runs the selected preset, known before any run.
+  .retentiveOutput("presetSupport", (ctx) =>
+    ctx.prerun
+      ?.resolve({ field: "presetSupport", assertFieldType: "Input", allowPermanentAbsence: true })
+      ?.getDataAsJson<PresetSupport>(),
+  )
+
+  // The steps of the selected preset with their default rules, planned before any run.
+  .output("stepDefaults", (ctx) =>
+    ctx.prerun
+      ?.resolve({ field: "stepDefaults", assertFieldType: "Input", allowPermanentAbsence: true })
+      ?.getDataAsJson<StepDefaults>(),
+  )
 
   .retentiveOutput("inputOptions", (ctx) => {
     return ctx.resultPool.getOptions((v) => {
@@ -82,17 +180,14 @@ export const platforma = BlockModelV3.create(dataModel)
     return ctx.resultPool.findLabelsForColumnAxis(spec, 0);
   })
 
-  .output("logs", (ctx) => {
-    return parseResourceMap(ctx.outputs?.resolve("logs"), (acc) => acc.getLogHandle(), false);
-  })
+  // Keyed [sampleId, step].
+  .output("logs", (ctx) =>
+    parseSampleLogs(ctx.outputs?.resolve("logs"), (acc) => acc.getLogHandle()),
+  )
 
-  .output("progress", (ctx) => {
-    return parseResourceMap(
-      ctx.outputs?.resolve("logs"),
-      (acc) => acc.getProgressLog(ProgressPrefix),
-      false,
-    );
-  })
+  .output("progress", (ctx) =>
+    parseSampleLogs(ctx.outputs?.resolve("logs"), (acc) => acc.getProgressLog(ProgressPrefix)),
+  )
 
   .output("qc", (ctx) =>
     parseResourceMap(ctx.outputs?.resolve("qc"), (acc) => acc.getFileHandle(), true),
@@ -162,10 +257,39 @@ export const platforma = BlockModelV3.create(dataModel)
     return true;
   })
 
-  .sections((_ctx) => [{ type: "link", href: "/", label: "Main" }])
+  .outputWithStatus("qcReportTable", (ctx) => {
+    const qcReportTable = ctx.outputs?.resolve({
+      field: "qcReportTable",
+      assertFieldType: "Input",
+      allowPermanentAbsence: true,
+    });
+    if (qcReportTable === undefined) return undefined;
+    const collection = ColumnsCollection([qcReportTable]);
+    if (collection.isEmpty()) return undefined;
+    const cols = collection.getColumns();
+    if (cols.length === 0) return undefined;
+    // A single primary column avoids V3's per-primary label-discovery collision on same-axis
+    // columns.
+    return createPlDataTableV3(ctx, {
+      primaryColumns: [cols[0]],
+      columns: cols.slice(1),
+      tableState: ctx.data.tableState,
+    });
+  })
+
+  .sections((_ctx) => [
+    { type: "link", href: "/", label: "Main" },
+    { type: "link", href: "/qc-report-table", label: "QC Report Table" },
+  ])
 
   .title((ctx) => ctx.data.title ?? "DriverMap™ AIR Clonotyping")
 
   .done();
 
 export type BlockOutputs = InferOutputsType<typeof platforma>;
+export type Href = InferHrefType<typeof platforma>;
+export * from "./args";
+export * from "./progress";
+export * from "./qc";
+export * from "./reports";
+export * from "./step-resources";

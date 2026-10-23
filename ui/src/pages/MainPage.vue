@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { AgGridVue } from "ag-grid-vue3";
 
-import type { Qc } from "@platforma-open/milaboratories.mixcr-clonotyping-2.model";
+import type { Qc } from "@platforma-open/cellecta.drivermap-mixcr-clonotyping.model";
 import type { PlAgHeaderComponentParams } from "@platforma-sdk/ui-vue";
 import {
   AgGridTheme,

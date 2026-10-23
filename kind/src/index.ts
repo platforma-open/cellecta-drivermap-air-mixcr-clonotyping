@@ -1,42 +1,65 @@
 import { assertParamsObject, defineBlockKind } from "@platforma-sdk/block-kind";
+import { isPlRef, type PlRef } from "@platforma-sdk/model";
 import { name, version } from "../package.json" with { type: "json" };
 
 /**
  * This block's init-params contract — the shape a block of this kind receives
  * at creation, and exactly what a project template serializes for it.
  *
- * TODO(block-kind): replace `NEEDS_BLOCK_PARAMS` with the real params shape, then
- * wire the model's `init(({ params }) => …)` to consume them. If this block takes
- * no author-supplied params, set it to `Record<string, never>` deliberately.
- *
- * This is an intentional sentinel: `NEEDS_BLOCK_PARAMS` is an undefined type, so
- * the block fails to typecheck (TS2304) until the contract is chosen on purpose.
- * A scaffolded-but-unmigrated block must never compile with an empty contract by
- * default — see the block-kind migration recipe in the `block-dev` skill.
+ * Every field is optional: a block with no input picked and no preset chosen is
+ * an ordinary state the UI reaches, so export has to be able to write it and
+ * apply has to be able to take it back. Whether a configuration is runnable is
+ * settled by the model's `args` lambda, not here.
  */
-export type BlockParams = NEEDS_BLOCK_PARAMS;
+export type BlockParams = {
+  input?: PlRef;
+  /** A built-in Cellecta DriverMap™ AIR MiXCR preset name. */
+  preset?: string;
+  chains?: string[];
+  limitInput?: number;
+  perProcessMemGB?: number;
+  perProcessCPUs?: number;
+  title?: string;
+};
+
+type Guard<T> = (value: unknown) => value is T;
+type Check<T> = { readonly is: Guard<T>; readonly must: string };
+
+const isString: Guard<string> = (v): v is string => typeof v === "string";
+const isInteger: Guard<number> = (v): v is number => Number.isInteger(v);
+const isStringArray: Guard<string[]> = (v): v is string[] =>
+  Array.isArray(v) && v.every((e) => typeof e === "string");
 
 /**
- * The same contract at runtime, for params that arrive from a template file rather than
- * from typed code — the only point that can catch a hand-written entry being wrong.
- *
- * TODO(block-kind): read each key `BlockParams` declares and say what it must be, then
- * return them. Plain TypeScript is the default here: a kind owes no schema library, and a
- * check written by hand is held to the contract by the return type. Reach for a validation
- * library only where the shape earns it, and add it to this package's dependencies yourself.
- *
- * Check the fields the contract requires, and stop there. A key the contract does not name
- * needs no rejection: it is dropped by not being read.
- *
- * This is a second intentional sentinel. The function has to return `BlockParams`, so
- * `return {}` stops compiling the moment the contract declares a required field — the check
- * cannot drift from the contract by being left behind. Never satisfy it with a cast: `value
- * as BlockParams` compiles today and checks nothing forever.
+ * The contract, field by field, at runtime. The `satisfies` clause demands an
+ * entry for every key `BlockParams` declares, typed against that key's own type.
+ */
+const CONTRACT = {
+  input: { is: isPlRef, must: "a reference to another block's output" },
+  preset: { is: isString, must: "a string" },
+  chains: { is: isStringArray, must: "an array of strings" },
+  limitInput: { is: isInteger, must: "an integer" },
+  perProcessMemGB: { is: isInteger, must: "an integer" },
+  perProcessCPUs: { is: isInteger, must: "an integer" },
+  title: { is: isString, must: "a string" },
+} satisfies { [K in keyof BlockParams]-?: Check<NonNullable<BlockParams[K]>> };
+
+/**
+ * The same contract at runtime, for params that arrive from a template file.
+ * Each field the contract names is read and checked; a key it does not name is
+ * dropped by never being read.
  */
 function parseInitializationParams(value: unknown): BlockParams {
   assertParamsObject(value);
 
-  return {};
+  const params: BlockParams = {};
+  for (const [field, check] of Object.entries(CONTRACT)) {
+    const raw = value[field];
+    if (raw === undefined) continue;
+    if (!check.is(raw)) throw new Error(`'${field}' must be ${check.must}.`);
+    Object.assign(params, { [field]: raw });
+  }
+  return params;
 }
 
 // Identity (`name`/`version`) comes from this package's own `package.json`, so

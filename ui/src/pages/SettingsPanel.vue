@@ -2,12 +2,15 @@
 import { plRefsEqual, type PlRef } from "@platforma-sdk/model";
 import {
   PlAccordionSection,
+  PlAlert,
   PlDropdown,
   PlDropdownMulti,
   PlDropdownRef,
   PlNumberField,
+  PlSectionSeparator,
 } from "@platforma-sdk/ui-vue";
 import { useApp } from "../app";
+import StepResourcesSettings from "./StepResourcesSettings.vue";
 
 const app = useApp();
 
@@ -53,6 +56,9 @@ const presetOptions = [
   />
 
   <PlDropdown v-model="app.model.data.preset" :options="presetOptions" label="Preset" required />
+  <PlAlert v-if="app.model.outputs.presetSupport?.supported === false" type="error">
+    {{ app.model.outputs.presetSupport.reason }}
+  </PlAlert>
 
   <PlDropdownMulti
     v-model="app.model.data.chains"
@@ -68,5 +74,28 @@ const presetOptions = [
       clearable
       label="Take only this number of reads into analysis"
     />
+
+    <PlSectionSeparator>Resources</PlSectionSeparator>
+    <PlNumberField
+      v-model="app.model.data.perProcessMemGB"
+      label="Set memory per every sample process (GB)"
+      :min-value="1"
+      :step="1"
+      clearable
+    >
+      <template #tooltip>
+        Replaces the computed memory of every MiXCR step that sets no per-step value below.
+      </template>
+    </PlNumberField>
+    <PlNumberField
+      v-model="app.model.data.perProcessCPUs"
+      label="Set CPU number per every sample process"
+      :min-value="1"
+      :step="1"
+      clearable
+    />
+    <PlAccordionSection label="Per-step resources">
+      <StepResourcesSettings />
+    </PlAccordionSection>
   </PlAccordionSection>
 </template>

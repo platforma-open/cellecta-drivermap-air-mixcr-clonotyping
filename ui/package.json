@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "@platforma-open/cellecta.drivermap-mixcr-clonotyping.model": "workspace:*",
-    "@platforma-open/milaboratories.mixcr-clonotyping-2.model": "catalog:",
     "@platforma-sdk/model": "catalog:",
     "@platforma-sdk/ui-vue": "catalog:",
     "ag-grid-enterprise": "catalog:",

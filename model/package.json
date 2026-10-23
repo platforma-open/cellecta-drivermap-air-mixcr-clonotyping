@@ -19,19 +19,23 @@
     "build": "ts-builder build --target block-model && block-tools build-model",
     "fmt": "ts-builder format",
     "watch": "ts-builder build --target block-model --watch",
-    "check": "ts-builder check --target block-model"
+    "check": "ts-builder check --target block-model",
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@milaboratories/helpers": "catalog:",
     "@platforma-open/cellecta.drivermap-mixcr-clonotyping.kind": "workspace:*",
-    "@platforma-sdk/model": "catalog:"
+    "@platforma-sdk/model": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@milaboratories/ts-builder": "catalog:",
     "@milaboratories/ts-configs": "catalog:",
-    "@platforma-sdk/block-tools": "catalog:"
+    "@platforma-sdk/block-tools": "catalog:",
+    "@types/node": "*",
+    "vitest": "catalog:"
   },
   "peerDependencies": {
-    "@types/node": "*",
     "typescript": "*"
   }
 }

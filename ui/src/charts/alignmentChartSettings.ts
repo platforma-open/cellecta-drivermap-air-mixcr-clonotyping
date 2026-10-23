@@ -1,8 +1,8 @@
-import type { AlignReport } from "@platforma-open/milaboratories.mixcr-clonotyping-2.model";
+import type { AlignReport } from "@platforma-open/cellecta.drivermap-mixcr-clonotyping.model";
 import {
   AlignmentChannelLabels,
   extractAlignmentChannels,
-} from "@platforma-open/milaboratories.mixcr-clonotyping-2.model";
+} from "@platforma-open/cellecta.drivermap-mixcr-clonotyping.model";
 import type { Color } from "@platforma-sdk/ui-vue";
 import { Gradient } from "@platforma-sdk/ui-vue";
 import type { Ref } from "vue";

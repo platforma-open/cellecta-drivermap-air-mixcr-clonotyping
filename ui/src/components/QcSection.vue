@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import type { QcCheckResult } from "@platforma-open/milaboratories.mixcr-clonotyping-2.model";
-import { QcCheckDescriptions } from "@platforma-open/milaboratories.mixcr-clonotyping-2.model";
+import type { QcCheckResult } from "@platforma-open/cellecta.drivermap-mixcr-clonotyping.model";
+import { QcCheckDescriptions } from "@platforma-open/cellecta.drivermap-mixcr-clonotyping.model";
 import { PlStatusTag } from "@platforma-sdk/ui-vue";
 import { computed, reactive } from "vue";
 

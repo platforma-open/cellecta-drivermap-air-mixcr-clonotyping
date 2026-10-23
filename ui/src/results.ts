@@ -1,21 +1,61 @@
-import { ProgressPrefix } from "@platforma-open/cellecta.drivermap-mixcr-clonotyping.model";
 import {
   AlignReport,
   AssembleReport,
+  ProgressPrefix,
   Qc,
-} from "@platforma-open/milaboratories.mixcr-clonotyping-2.model";
-import { isLiveLog, type AnyLogHandle } from "@platforma-sdk/model";
+} from "@platforma-open/cellecta.drivermap-mixcr-clonotyping.model";
+import type { AnyLogHandle } from "@platforma-sdk/model";
 import { ReactiveFileContent } from "@platforma-sdk/ui-vue";
 import { computed } from "vue";
 import { useApp } from "./app";
 
 const reactiveFileContent = ReactiveFileContent.useGlobal();
 
+// MiXCR runs as one command per step. Step logs and progress arrive keyed by (sampleId, step).
+// The workflow leads each step key with its zero-padded run position (`003:assemble`), so the
+// keys sort in run order and the furthest step sorts last.
+
+type Entries<T> = { key: unknown[]; value?: T }[];
+
+/** One MiXCR step's log. `key` is the workflow's `003:assemble`; `label` reads `003 assemble`. */
+export type StepLog = { key: string; label: string; handle: AnyLogHandle };
+
+/** Each sample's step logs, in run order. */
+function logsPerSample(entries: Entries<AnyLogHandle> | undefined): Map<string, StepLog[]> {
+  const out = new Map<string, StepLog[]>();
+  const ordered = [...(entries ?? [])].sort((a, b) =>
+    String(a.key[1]).localeCompare(String(b.key[1])),
+  );
+  for (const e of ordered) {
+    if (e.value === undefined) continue;
+    const sampleId = e.key[0] as string;
+    const key = String(e.key[1]);
+    const logs = out.get(sampleId) ?? [];
+    logs.push({ key, label: key.replace(":", " "), handle: e.value });
+    out.set(sampleId, logs);
+  }
+  return out;
+}
+
+/** The value of the furthest step that has one, for each sample. */
+function furthestStep<T>(entries: Entries<T> | undefined): Map<string, T> {
+  const best = new Map<string, { step: string; value: T }>();
+  for (const entry of entries ?? []) {
+    if (entry.value === undefined) continue;
+    const sampleId = entry.key[0] as string;
+    const step = String(entry.key[1]);
+    const current = best.get(sampleId);
+    if (current !== undefined && step < current.step) continue;
+    best.set(sampleId, { step, value: entry.value });
+  }
+  return new Map([...best].map(([sampleId, e]) => [sampleId, e.value]));
+}
+
 export type Result = {
   label: string;
   sampleId: string;
   progress: string;
-  logHandle?: AnyLogHandle;
+  logs: StepLog[];
   alignReport?: AlignReport;
   assembleReport?: AssembleReport;
   qc?: Qc;
@@ -28,58 +68,42 @@ export const resultMap = computed(() => {
   const sampleLabels = app.model.outputs.sampleLabels;
   if (sampleLabels === undefined) return undefined;
 
-  // Block-level run state: true until the whole workflow (MiXCR + clone export +
-  // the VBC Python step) finishes — not just MiXCR.
+  // Block-level run state: true until the whole workflow (MiXCR + clone export + the VBC
+  // Python step) finishes — not just MiXCR.
   const blockRunning = app.model.outputs.isRunning;
-  // Block-level error state: true once the run has settled into a failure.
-  // `blockRunning` goes false on both success and failure, so without this a
-  // failed post-MiXCR step (e.g. the VBC Python step) would show a green "Done".
-  // Driven by the model's `clonotypingStatus` envelope — `ok === false` is a
-  // settled failure; `ok: true` / undefined means running-or-succeeded.
+  // Block-level error state: `blockRunning` goes false on both success and failure, so without
+  // this a failed post-MiXCR step would show a green "Done".
   const blockErrored = app.model.outputs.clonotypingStatus?.ok === false;
 
   const resultMap = new Map<string, Result>();
-
   for (const sampleId in sampleLabels) {
-    const label = sampleLabels[sampleId];
-    const result: Result = {
-      sampleId: sampleId,
-      label: label,
+    resultMap.set(sampleId, {
+      sampleId,
+      label: sampleLabels[sampleId],
       progress: blockRunning ? "Queued" : "Not started",
-    };
-    resultMap.set(sampleId, result);
+      logs: [],
+    });
   }
 
-  // logs & reports
+  for (const [sampleId, logs] of logsPerSample(app.model.outputs.logs?.data)) {
+    const r = resultMap.get(sampleId);
+    if (r) r.logs = logs;
+  }
 
-  const logs = app.model.outputs.logs;
+  // The qc result is the last thing MiXCR writes for a sample.
+  const mixcrDone = new Set<string>();
   const qc = app.model.outputs.qc;
-  const reports = app.model.outputs.reports;
-  const progress = app.model.outputs.progress;
-  // MiXCR log liveness per sample: the stream is live only while `mixcr analyze`
-  // is still running for that sample.
-  const mixcrLogLive = new Map<string, boolean>();
-  if (logs) {
-    for (const logData of logs.data) {
-      const sampleId = logData.key[0] as string;
-      const r = resultMap.get(sampleId);
-      if (!r) continue;
-
-      mixcrLogLive.set(sampleId, isLiveLog(logData.value));
-
-      r.logHandle = logData.value;
-    }
-  }
-
   if (qc) {
     for (const qcData of qc.data) {
       const sampleId = qcData.key[0] as string;
       const r = resultMap.get(sampleId);
       if (!r || !qcData.value) continue;
+      mixcrDone.add(sampleId);
       r.qc = reactiveFileContent.getContentJson(qcData.value.handle, Qc).value;
     }
   }
 
+  const reports = app.model.outputs.reports;
   if (reports)
     for (const report of reports.data) {
       const sampleId = report.key[0] as string;
@@ -89,14 +113,12 @@ export const resultMap = computed(() => {
       if (r) {
         switch (reportId) {
           case "align":
-            // globally cached
             r.alignReport = reactiveFileContent.getContentJson(
               report.value.handle,
               AlignReport,
             )?.value;
             break;
           case "assemble":
-            // globally cached
             r.assembleReport = reactiveFileContent.getContentJson(
               report.value.handle,
               AssembleReport,
@@ -106,33 +128,26 @@ export const resultMap = computed(() => {
       }
     }
 
-  // Latest MiXCR progress line per sample (emitted only while its log is live).
-  const mixcrProgress = new Map<string, string>();
-  if (progress) {
-    for (const progressData of progress.data) {
-      const sampleId = progressData.key[0] as string;
-      if (progressData.value) {
-        mixcrProgress.set(sampleId, progressData.value.replace(ProgressPrefix, ""));
-      }
-    }
-  }
+  // A step whose stdout carries no progress line yet reports the empty string; the last step
+  // that did report one stands until the next one speaks.
+  const reported = (app.model.outputs.progress?.data ?? []).filter(
+    (e) => e.value !== undefined && e.value.length > 0,
+  );
+  const mixcrProgress = furthestStep(reported);
 
-  // Phase-aware status. MiXCR emits progress only while its log is live; once it
-  // closes, clone export and the VBC Python step still run — tracked block-wide
-  // by `isRunning` (there is no per-sample post-MiXCR signal, and the by-clone-key
-  // aggregation spans all samples, so a sample's results aren't final until the
-  // whole block finishes). So once a sample's MiXCR log closes it is:
-  //   - "Error" if the block has settled into a failure (never a false "Done"),
-  //   - "Processing clonotypes" while the block is still running,
+  // Phase-aware status. Once MiXCR has written a sample's qc result, clone export and the VBC
+  // Python step still run — tracked block-wide by `isRunning`, since the by-clone-key
+  // aggregation spans all samples. So a sample is:
+  //   - its furthest MiXCR step's progress while MiXCR runs on it,
+  //   - "Error" once the block has settled into a failure,
+  //   - "Processing clonotypes" while the block is still running past MiXCR,
   //   - "Done" only when the whole block has finished successfully.
   for (const r of resultMap.values()) {
-    const logLive = mixcrLogLive.get(r.sampleId);
-    if (logLive === undefined) {
-      r.progress = blockRunning ? "Queued" : "Not started";
-    } else if (logLive) {
-      r.progress = mixcrProgress.get(r.sampleId) ?? "Running";
-    } else if (blockErrored) {
+    if (blockErrored && (r.logs.length > 0 || mixcrDone.has(r.sampleId))) {
       r.progress = "Error";
+    } else if (!mixcrDone.has(r.sampleId)) {
+      if (r.logs.length === 0) r.progress = blockRunning ? "Queued" : "Not started";
+      else r.progress = mixcrProgress.get(r.sampleId)?.replace(ProgressPrefix, "") ?? "Running";
     } else {
       r.progress = blockRunning ? "Processing clonotypes" : "Done";
     }

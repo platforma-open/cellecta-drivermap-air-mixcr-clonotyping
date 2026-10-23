@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AlignReport } from "@platforma-open/milaboratories.mixcr-clonotyping-2.model";
+import type { AlignReport } from "@platforma-open/cellecta.drivermap-mixcr-clonotyping.model";
 import { PlChartStackedBar } from "@platforma-sdk/ui-vue";
 import { toRef } from "vue";
 import { useAlignmentChartSettings } from "./alignmentChartSettings";
