@@ -21,6 +21,9 @@ catalogs:
     '@platforma-open/milaboratories.runenv-python-3':
       specifier: ^1.1.16
       version: 1.1.16
+    '@platforma-open/milaboratories.samples-and-data':
+      specifier: ^1.24.0
+      version: 1.24.0
     '@platforma-open/milaboratories.software-binary-collection':
       specifier: 1.0.12
       version: 1.0.12
@@ -227,6 +230,37 @@ importers:
       '@platforma-sdk/block-tools':
         specifier: 'catalog:'
         version: 2.16.16(@types/node@24.5.2)
+
+  test:
+    dependencies:
+      '@platforma-open/cellecta.drivermap-mixcr-clonotyping.model':
+        specifier: workspace:*
+        version: link:../model
+      '@platforma-open/milaboratories.samples-and-data':
+        specifier: 'catalog:'
+        version: 1.24.0
+      '@platforma-sdk/model':
+        specifier: 'catalog:'
+        version: 1.85.2
+      this-block:
+        specifier: workspace:@platforma-open/cellecta.drivermap-mixcr-clonotyping@*
+        version: link:../block
+      typescript:
+        specifier: '*'
+        version: 7.0.2
+    devDependencies:
+      '@milaboratories/ts-builder':
+        specifier: 'catalog:'
+        version: 1.7.2(@microsoft/api-extractor@7.58.9(@types/node@24.5.2))(@types/node@24.5.2)(@volar/typescript@2.4.28)(@vue/language-core@3.3.10)(rollup@4.40.0)(vue@3.5.24(typescript@7.0.2))(yaml@2.8.1)
+      '@milaboratories/ts-configs':
+        specifier: 'catalog:'
+        version: 1.4.0
+      '@platforma-sdk/test':
+        specifier: 'catalog:'
+        version: 1.85.4(@bytecodealliance/preview2-shim@0.17.9)(@types/node@24.5.2)(vite@8.0.16(@types/node@24.5.2)(yaml@2.8.1))
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.9(@types/node@24.5.2)(@vitest/coverage-istanbul@4.1.9)(vite@8.0.16(@types/node@24.5.2)(yaml@2.8.1))
 
   ui:
     dependencies:
@@ -1543,6 +1577,9 @@ packages:
 
   '@platforma-open/milaboratories.runenv-python-3@1.1.16':
     resolution: {integrity: sha512-A46M7cK1uVW4itLjXX9nodZm97ETcDBDQPQpBsPmu+Wjy8wlyHxUUH/v8KvtW45gNcW+yNO0LvzqE0u4GL86Jg==}
+
+  '@platforma-open/milaboratories.samples-and-data@1.24.0':
+    resolution: {integrity: sha512-j2FlpUAkI1YNx+qF+RibSI9HEoYyiK0MvYX9CtNdtCpqTAJfVxvjN7USPCEP36yZbkpNGXzqEm0hLsRFyhJohg==}
 
   '@platforma-open/milaboratories.software-binary-collection.software-7zip@1.2.4':
     resolution: {integrity: sha512-4sHbwb2TBbWnre1V7uUA4bKwvIJSa39BmvdTU6E2NEM8q6Pzb4l2E1ql9PKlNs50XE+f5YsLRG5oBxSIUdlkbA==}
@@ -6566,6 +6603,8 @@ snapshots:
     optional: true
 
   '@platforma-open/milaboratories.runenv-python-3@1.1.16': {}
+
+  '@platforma-open/milaboratories.samples-and-data@1.24.0': {}
 
   '@platforma-open/milaboratories.software-binary-collection.software-7zip@1.2.4': {}
 

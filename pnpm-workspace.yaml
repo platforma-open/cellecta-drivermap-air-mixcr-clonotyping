@@ -5,6 +5,7 @@ packages:
   - software/hash-column
   - software/vbc-filtering
   - software/vbc-normalization
+  - test
   - ui
   - workflow
 
@@ -39,3 +40,6 @@ catalog:
   shx: ~0.4.0
   "@platforma-sdk/block-kind": 1.1.0
   "@milaboratories/helpers": 1.14.5
+
+  # other blocks used in tests
+  "@platforma-open/milaboratories.samples-and-data": ^1.24.0

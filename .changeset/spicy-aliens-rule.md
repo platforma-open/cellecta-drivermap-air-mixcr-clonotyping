@@ -8,34 +8,50 @@
 "@platforma-open/cellecta.drivermap-mixcr-clonotyping.hash-column": major
 ---
 
-MILAB-6335: bring the Cellecta DriverMap AIR + MiXCR clonotyping block up to date — fix the Full-Length Profiling crash, port the VBC Python scripts to upstream, migrate to BlockModelV3 with a full SDK upgrade, and land the correctness, status, and test improvements found along the way.
+MILAB-6335: bring the Cellecta DriverMap AIR + MiXCR clonotyping block up to date — fix the Full-Length Profiling crash, port the VBC Python scripts to upstream, migrate to BlockModelV3 on the current SDK, split MiXCR into one job per step, and add the QC report table.
 
 **Crash & correctness fixes**
 
-- **Full-Length Profiling export no longer crashes.** The full-length preset assembles on `{CDR1Begin:FR4End}`, so MiXCR never exports `nSeqVDJRegion` — yet the preset's `keyColumns`/`assemblingFeature` referenced it and panicked `keyAxesSpec`. The clone key now derives from the regions spanning the assembling feature plus the V/J/C gene calls, and `assemblingFeature` is `CDR3`. `keyColumns` is computed from each preset's `keyFeatures` + `keyGeneColumns`, so the exported features and the clone key cannot drift apart.
-- **Unreliable VBC normalization no longer fails the run.** When a sample's VBC normalization is all-unreliable, `normalize.py` emits `"NA"` molecule counts. The `abundancePf` import now marks the molecule columns `allowNA: true` (imported as null; `readCount`/`readFraction` stay non-null), `agg-clones` ranks representative clones by the never-NA `readCount` (not `templateEstimate`, which crashed `idxmax` on all-NA groups), and a new `aggregate-abundance` step sums abundance per `clonotypeKey` per sample so the import key stays unique.
-- **`readFraction` stays a within-sample fraction that sums to 1.** Every `filter.py` path — including the QC-fail (`< 1000` clonotypes) path — now collapses to one row per clone before abundance aggregation, instead of passing per-molecule rows through.
+- **Full-Length Profiling export no longer crashes.** The full-length preset assembles on `{CDR1Begin:FR4End}`, so MiXCR never exports `nSeqVDJRegion`. The clone key now derives from the regions spanning the assembling feature plus the V/J/C gene calls; `keyColumns` is computed from each preset's `keyFeatures`, so the exported features and the clone key cannot drift apart.
+- **TCR gamma and delta are no longer swapped.** `TCRGamma` exports `TRG` and `TCRDelta` exports `TRD`.
+- **Unreliable VBC normalization no longer fails the run.** NA molecule counts import as null, `agg-clones` ranks representative clones by the never-NA `readCount`, and an `aggregate-abundance` step sums abundance per `clonotypeKey` per sample so the import key stays unique.
+- **`readFraction` stays a within-sample fraction that sums to 1** on every `filter.py` path, including the QC-fail path.
+- **The clns column carries the real assembling feature**, covered features and UMI tags, read from the resolved preset.
 
 **VBC Python port**
 
-- Ported `filter.py` and `normalize.py` up to `kitt-cellecta/AIR_VBC_filtering@main`: QC gate, barcode-hopping filter, and KDE thresholding (Silverman bandwidth, >2-maxima split, valley-depth gate, VBC 1→2→3 reliability fallback). The threshold function is now total — it returns a 6-tuple on every path and never `None`, fixing the `cannot unpack non-iterable NoneType` crash on degenerate bins.
-- Kept the block's adaptation layer: explicit-file CLI, the kit's `tagValueMIVBC` tag, the `templateEstimateFraction` output, empty-input/QC-fail handling, and the downstream column schema (no `readCount_BC` pivot).
-- Pinned the port with an I/O contract, a golden-comparison harness against upstream, and a committed synthetic test bed.
+- Ported `filter.py` and `normalize.py` to `kitt-cellecta/AIR_VBC_filtering@main` (tagged `v1.0.0`): QC gate, barcode-hopping filter and KDE thresholding. The threshold function is total and never returns `None`.
+- Kept the block's adaptation layer: explicit-file CLI, the kit's `tagValueMIVBC` tag, the `templateEstimateFraction` output and the downstream column schema.
+- Pinned the port with an I/O contract, a golden-comparison harness against upstream, and a synthetic test bed.
 
-**BlockModelV3 + SDK/tooling modernization**
+**MiXCR split and resource sizing**
 
-- Migrated the model to `BlockModelV3`: a unified `BlockData` (`DataModelBuilder`) with an `.upgradeLegacy` step so persisted V1 projects upgrade transparently; UI bindings move to `app.model.data.*` and the entry to `defineAppV3`.
-- Moved onto the block-tools structurer (managed tsconfig/turbo/CI, oxlint/oxfmt, block index) with a full SDK upgrade (`@platforma-sdk/model` & `ui-vue` 1.79, `workflow-tengo` 6, `tengo-builder` 3 → 4, `block-tools`), including the author-code changes the bump required (ag-grid 34, the `ReactiveFileContent` instance API, `PlNumberField`).
-- Put the three Python packages on a shared `uv` + `ruff` platform — one `pyproject.toml`/`uv.lock`/ruff config, with each package's `requirements.txt` compiled from a PEP 735 dependency group.
-- Renamed the `hash-column` software to the block's own `cellecta` namespace.
+- MiXCR 4.7.0-413-develop. `mixcr analyze --dry-run-json` plans the run and each step (align, refineTagsAndSort, assemble, qc) runs as its own job, with CPU and memory from a per-step table and a scratch request sized from the reads.
+- `exportClones` runs on the `memory-from-limits` entrypoint with RAM sized from the `.clns` (it ran an 8 GiB heap inside a 1 GiB grant before). The hash-column, VBC and aggregation jobs request memory sized from their input.
+- Advanced Settings gain a memory and CPU override for every sample process and a per-step memory floor; the step list is planned on request in the prerun.
+- The log tab shows one log per MiXCR step.
+
+**QC report table**
+
+- A new QC Report Table page lists one row per sample from `mixcr exportReportsTable`: alignment, tag refinement and assembly metrics.
+
+**BlockModelV3 + SDK/tooling**
+
+- `BlockModelV3` with a unified `BlockData`; persisted V1 projects upgrade transparently, and existing V3 data migrates to v2 (table state).
+- The block declares a kind with its init-params contract, and the model supports project templates.
+- Current SDK (`@platforma-sdk/model`/`ui-vue` 1.85, `workflow-tengo` 6.17, `block-tools` 2.16) on the block-tools structurer, with the slim block facade; the software builds with `block-tools software build`.
+- The block owns its MiXCR report and QC types instead of depending on the private mixcr-clonotyping model.
+- The three Python packages share one `uv` + `ruff` platform; the `hash-column` software moved to the block's own `cellecta` namespace.
 
 **Status & error surfacing**
 
-- **Progress is truthful.** The results table shows MiXCR progress while it runs, "Processing clonotypes" through the post-MiXCR phase, and "Done" only once the whole block finishes — never a premature "Done" the moment MiXCR ends.
-- **Failure is surfaced.** A failed post-MiXCR step (clone export or the VBC Python step) now shows per-sample "Error" instead of a false-green "Done". The model derives a `clonotypingStatus` (`OutputWithStatus`) from the top-level output fields plus a new `vbcStatus` workflow output — a nested ResourceMap that exposes the per-sample VBC errors the `clones` exportFrame hides.
-- The Settings panel auto-opens on a fresh block add.
+- The results table shows the furthest MiXCR step's progress while MiXCR runs, "Processing clonotypes" through the post-MiXCR phase, and "Done" only when the whole block finishes.
+- A failed post-MiXCR step shows "Error" instead of a false "Done".
+- The settings warn when the selected preset is one the block cannot run.
 
-**Tests & cleanup**
+**Tests**
 
-- Added a Python Tests CI workflow — ruff check/format gate, fast Hypothesis property tests on every push, slow golden comparisons on the merge queue and main, and a `requirements.txt`-sync check — plus a synthetic VBC test bed; coverage rose ~22% → ~81%.
-- Removed dead workflow/model code, simplified the UI, and fixed a missing `polars_hash` import in `hash-column`.
+- Block tests: an idle smoke test and an end-to-end run of the RNA profiling preset on synthetic Cellecta-shaped reads.
+- Python Tests CI: ruff gate, fast property tests, and slow golden comparisons.
+
+Existing projects re-run every sample on update.
