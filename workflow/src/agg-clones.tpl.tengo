@@ -10,6 +10,8 @@ self.defineOutputs("tsv")
 
 ptransformSw := assets.importSoftware("@platforma-open/milaboratories.software-ptransform:main")
 
+f := exec.formula
+
 self.body(func(inputs) {
 	inputData := inputs.__value__
 	inputDataMeta := inputData.getDataAsJson()
@@ -34,7 +36,15 @@ self.body(func(inputs) {
 		} ]
 	}
 
+	// All samples in one exec. ptransform's memory law is unmeasured; sized at 4x the summed
+	// per-sample TSVs with a 4 GiB floor.
 	aggregateBuilderCmd := exec.builder().
+		name("aggregate clonotypes").
+		inMediumQueue().
+		resources({ onCPU: {
+			cpu: 2,
+			ram: f.size("tsv").times(4).between(f.gib(4), f.gib(256)).staticFallback(f.gib(32))
+		} }).
 		printErrStreamToStdout().
 		software(ptransformSw).
 		arg("--workflow").arg("wf.json").
@@ -48,7 +58,7 @@ self.body(func(inputs) {
 		sampleId := key[0]
 		aggregateBuilderCmd.
 			arg(sampleId + ".tsv").
-			addFile(sampleId + ".tsv", inputFile)
+			addFile(sampleId + ".tsv", inputFile, { tag: "tsv" })
 	}
 
 	aggregateCmd := aggregateBuilderCmd.

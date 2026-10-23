@@ -1,12 +1,15 @@
 self := import("@platforma-sdk/workflow-tengo:tpl.light")
 assets := import("@platforma-sdk/workflow-tengo:assets")
 exec := import("@platforma-sdk/workflow-tengo:exec")
+mixcrCmd := import(":mixcr-cmd")
+memf := import(":mem-formula")
 
 self.defineOutputs(["tsv"])
 
-mixcrSw := assets.importSoftware("@platforma-open/milaboratories.software-mixcr:low-memory")
-ptransformSw := assets.importSoftware("@platforma-open/milaboratories.software-ptransform:main")
+mixcrSw := assets.importSoftware("@platforma-open/milaboratories.software-mixcr:memory-from-limits")
 hashColumnSw := assets.importSoftware("@platforma-open/cellecta.drivermap-mixcr-clonotyping.hash-column:main")
+
+f := exec.formula
 
 self.body(func(inputs) {
 	clnsFile := inputs.__value__
@@ -15,20 +18,18 @@ self.body(func(inputs) {
 	exportArgs := inputs.exportArgs
 	keyColumns := inputs.keyColumns
 
-
-	// Exporting clones from clns file
-	mixcrCmdBuilder := exec.builder().
+	// Bulk export on `memory-from-limits`; :mem-formula sizes it from the .clns.
+	mixcrCmdBuilder := mixcrCmd.base(mixcrSw).
+		name("mixcr exportClones").
 		inMediumQueue().
+		resources({ onCPU: { cpu: 2, ram: memf.exportRam(inputs.perProcessMemGB, 16, 30) } }).
 		printErrStreamToStdout().
-		software(mixcrSw).
-		secret("MI_LICENSE", "MI_LICENSE").
 		arg("exportClones").
 		arg("--dont-split-files").
 		arg("--drop-default-fields").
 		arg("--reset-export-clone-table-splitting").
 		arg("--export-productive-clones-only").
 		arg("--chains").arg(chains)
-
 
 	for argGrp in exportArgs {
 		for arg in argGrp {
@@ -42,20 +43,23 @@ self.body(func(inputs) {
 
 	mixcrCmd := mixcrCmdBuilder.
 		arg("clones.clns").
-		addFile("clones.clns", clnsFile).
+		addFile("clones.clns", clnsFile, { tag: "clns" }).
 		arg("clones.tsv").
 		saveFile("clones.tsv").
 		run()
-	
 
-	unprocessedTsv := mixcrCmd.getFile("clones.tsv")
-
-	
+	// polars reads the whole table; unmeasured, sized at 8x the TSV with a 4 GiB floor.
 	hashCmdBuilder := exec.builder().
+		name("hash clonotype key").
+		inMediumQueue().
+		resources({ onCPU: {
+			cpu: 2,
+			ram: f.size("tsv").times(8).between(f.gib(4), f.gib(128)).staticFallback(f.gib(16))
+		} }).
 		printErrStreamToStdout().
 		software(hashColumnSw).
 		arg("--input-table").arg("input.tsv").
-		addFile("input.tsv", unprocessedTsv).
+		addFile("input.tsv", mixcrCmd.getFile("clones.tsv"), { tag: "tsv" }).
 		arg("--output-table").arg("output.tsv").
 		arg("--calculate")
 

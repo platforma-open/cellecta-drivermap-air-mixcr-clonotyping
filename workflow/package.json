@@ -17,6 +17,7 @@
     "@platforma-sdk/workflow-tengo": "catalog:"
   },
   "devDependencies": {
+    "@platforma-open/milaboratories.software-binary-collection": "catalog:",
     "@platforma-open/milaboratories.software-mixcr": "catalog:",
     "@platforma-open/milaboratories.software-ptransform": "catalog:",
     "@platforma-sdk/tengo-builder": "catalog:",

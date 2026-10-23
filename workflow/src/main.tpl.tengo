@@ -1,10 +1,13 @@
 wf := import("@platforma-sdk/workflow-tengo:workflow")
-assets:= import("@platforma-sdk/workflow-tengo:assets")
+assets := import("@platforma-sdk/workflow-tengo:assets")
 render := import("@platforma-sdk/workflow-tengo:render")
 pframes := import("@platforma-sdk/workflow-tengo:pframes")
+times := import("times")
 
+calculatePresetInfoTpl := assets.importTemplate(":calculate-preset-info")
 processTpl := assets.importTemplate(":process")
 
+wf.setPreRun(assets.importTemplate(":prerun"))
 
 wf.body(func(args) {
 	input := wf.resolve(args.input)
@@ -14,13 +17,20 @@ wf.body(func(args) {
 		receptorsOrChains = args.chains
 	}
 
+	presetInfo := render.create(calculatePresetInfoTpl, { preset: args.preset })
+
 	runMixcr := render.createEphemeral(processTpl, {
 		inputSpec: input.getFutureInputField("spec"),
 		inputData: input.getFutureInputField("data"),
 		preset: args.preset,
+		presetContent: presetInfo.output("preset", 24 * times.hour),
+		presetSpecForBack: presetInfo.output("presetSpecForBack", 24 * times.hour),
 		blockId: wf.blockId().getDataAsJson(),
 		limitInput: args.limitInput,
-		receptorsOrChains: receptorsOrChains
+		receptorsOrChains: receptorsOrChains,
+		perProcessMemGB: args.perProcessMemGB,
+		perProcessCPUs: args.perProcessCPUs,
+		stepResources: args.stepResources
 	})
 
 	// The VBC/clonotype pipeline result (mixcr export -> VBC filter/normalize -> aggregate).
@@ -39,19 +49,15 @@ wf.body(func(args) {
 			logs: runMixcr.output("logs.data"),
 			qc: pframes.exportColumnData(runMixcr.output("qc.data")),
 			reports: pframes.exportColumnData(runMixcr.output("reports.data")),
-			// `clones` is surfaced in outputs (in addition to exports, which feeds downstream
-			// blocks) so the model's isRunning waits on the VBC pipeline (not just the MiXCR
-			// analyze outputs). The model reads only ctx.outputs, never exports. A p-frame in
-			// outputs must be wrapped with exportFrame (a raw frame is only valid in exports);
-			// cf. mixcr-amplicon-alignment / mixcr-scfv-clonotyping. NOTE: getError() on this
-			// frame does not surface per-chain sub-resource errors — a failed VBC step is
-			// instead detected via `vbcStatus` below.
+			// `clones` is in outputs too, so the model's status waits on the VBC pipeline and
+			// not only on MiXCR. A frame in outputs must go through exportFrame.
 			clones: pframes.exportFrame(clonotypes),
 
-			// Per-chain VBC step status (a nested ResourceMap: [chain] -> per-sample
-			// cloneTableTsv ResourceMap), surfaced raw like `logs`. The model walks both
-			// levels and detects a failed VBC Python step that the clones exportFrame hides.
-			vbcStatus: runMixcr.output("vbcStatus")
+			// Per-chain VBC step status: [chain] -> per-sample cloneTableTsv ResourceMap. The
+			// model walks both levels to find a failed VBC step the clones frame hides.
+			vbcStatus: runMixcr.output("vbcStatus"),
+
+			qcReportTable: pframes.exportFrame(runMixcr.output("qcReportTable"))
 		},
 		exports: exports
 	}

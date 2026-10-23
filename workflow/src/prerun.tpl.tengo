@@ -1,0 +1,39 @@
+// pre-run: whether the block runs the selected preset, and, once the operator asks, the steps a
+// run takes with their default resource rules.
+
+wf := import("@platforma-sdk/workflow-tengo:workflow")
+render := import("@platforma-sdk/workflow-tengo:render")
+assets := import("@platforma-sdk/workflow-tengo:assets")
+times := import("times")
+
+calculatePresetInfoTpl := assets.importTemplate(":calculate-preset-info")
+planStepsTpl := assets.importTemplate(":plan-steps")
+presetSupportTpl := assets.importTemplate(":preset-support")
+
+CACHE_PERIOD := 24 * times.hour
+
+wf.body(func(args) {
+	outputs := {}
+
+	if !is_undefined(args.preset) {
+		presetInfo := render.create(calculatePresetInfoTpl, { preset: args.preset })
+
+		presetSupport := render.create(presetSupportTpl, {
+			presetContent: presetInfo.output("preset", CACHE_PERIOD)
+		})
+		outputs.presetSupport = presetSupport.output("presetSupport", CACHE_PERIOD)
+
+		if args.listSteps {
+			planSteps := render.create(planStepsTpl, {
+				preset: args.preset,
+				presetContent: presetInfo.output("preset", CACHE_PERIOD)
+			})
+			outputs.stepDefaults = planSteps.output("stepDefaults", CACHE_PERIOD)
+		}
+	}
+
+	return {
+		outputs: outputs,
+		exports: {}
+	}
+})
