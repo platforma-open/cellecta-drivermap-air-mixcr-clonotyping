@@ -128,10 +128,10 @@ export const resultMap = computed(() => {
       }
     }
 
-  // A step whose stdout carries no progress line yet reports the empty string; the last step
+  // A step whose stdout carries no progress line yet reports a blank line; the last step
   // that did report one stands until the next one speaks.
   const reported = (app.model.outputs.progress?.data ?? []).filter(
-    (e) => e.value !== undefined && e.value.length > 0,
+    (e) => e.value !== undefined && e.value.replace(ProgressPrefix, "").trim().length > 0,
   );
   const mixcrProgress = furthestStep(reported);
 
