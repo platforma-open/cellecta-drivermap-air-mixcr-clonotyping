@@ -99,6 +99,43 @@ def test_template_estimate_matches_main(fixtures, tmp_path, ref_filter, ref_norm
     )
 
 
+FILTER_SRC = pathlib.Path(__file__).parents[2] / "vbc-filtering" / "src" / "filter.py"
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("name", ["clones_main", "clones_unreliable_vbc1"])
+def test_full_chain_matches_main(fixtures, tmp_path, name, ref_filter, ref_norm):
+    """Our filter -> our normalize, on our own maximas, matches main's filter -> normalize.
+
+    The pair test above feeds both normalizers the upstream maximas, so a wrong normFactor
+    in our filter's maximas file would pass it; this chain uses ours end to end.
+    """
+    oursdir = tmp_path / "ours"
+    oursdir.mkdir()
+    subprocess.run([sys.executable, str(FILTER_SRC), str(fixtures[name]), str(oursdir / "f")], check=True, cwd=oursdir)
+    our_out = oursdir / "quantified.tsv"
+    subprocess.run(
+        [sys.executable, str(NORM_SRC), str(oursdir / "f.kde.maximas.txt"), str(oursdir / "f.tsv"), str(our_out)],
+        check=True,
+        cwd=oursdir,
+    )
+
+    refdir = tmp_path / "ref"
+    refdir.mkdir()
+    _ref_filter(fixtures[name], refdir, ref_filter)
+    subprocess.run([sys.executable, str(ref_norm), str(refdir), "s", "--mode", "bulk"], check=True, cwd=refdir)
+
+    ours = pd.read_csv(our_out, sep="\t")
+    ref = pd.read_csv(refdir / "s.clones_ALL.quantified.tsv", sep="\t")
+    assert set(ours["cloneId"]) == set(ref["cloneId"]), f"{name}: surviving clonotype set differs from main"
+    merged = ours[["cloneId", "templateEstimate"]].merge(
+        ref[["cloneId", "templateEstimate"]], on="cloneId", suffixes=("_ours", "_ref")
+    )
+    assert (merged["templateEstimate_ours"] == merged["templateEstimate_ref"]).all(), (
+        f"{name}: per-clone templateEstimate differs from main"
+    )
+
+
 @pytest.mark.slow
 def test_nan_normfactor_yields_na(fixtures, tmp_path, ref_filter, ref_norm):
     """clones_no_norm: NaN normFactor → literal templateEstimate == 'NA' (not a crash)."""

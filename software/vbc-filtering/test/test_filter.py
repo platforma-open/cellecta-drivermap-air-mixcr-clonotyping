@@ -62,6 +62,21 @@ def test_surviving_clonotypes_match_main(fixtures, tmp_path, name, ref_filter):
     )
 
 
+@pytest.mark.slow
+@pytest.mark.parametrize("name", ["clones_main", "clones_unreliable_vbc1", "clones_no_norm"])
+def test_maximas_file_matches_main(fixtures, tmp_path, name, ref_filter):
+    """The maximas file (per-VBC threshold and peaks, from which normalize derives normFactor)
+    matches upstream main row for row; NaN cells must be NaN in both."""
+    oursdir = _mkdir(tmp_path, "ours")
+    refdir = _mkdir(tmp_path, "ref")
+    _ours(fixtures[name], oursdir)
+    _ref(fixtures[name], refdir, ref_filter)
+
+    ours = pd.read_csv(oursdir / "ours.kde.maximas.txt", sep="\t", header=None)
+    ref = pd.read_csv(refdir / "s.kde.maximas.txt", sep="\t", header=None)
+    pd.testing.assert_frame_equal(ours, ref, check_exact=True)
+
+
 def test_qc_fail_keeps_all_clones_collapsed(fixtures, tmp_path, ref_filter):
     """clones_tiny (<1000 rows) → QC fail → no read filtering, but collapse to the block's
     one-row-per-clone schema.

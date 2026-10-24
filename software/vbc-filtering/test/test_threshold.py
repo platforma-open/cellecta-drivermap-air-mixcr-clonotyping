@@ -62,6 +62,19 @@ def _forced_extrema(maxima_idx, minima_idx):
     return fake
 
 
+def test_one_maximum_no_valley_reports_nan_threshold_density(monkeypatch):
+    """Deliberate divergence from upstream main: one maximum and no minimum below it falls back
+    to default_low_thresh, and the threshold density is NaN. Upstream reports
+    exp(log_dens[default_low_thresh]) there — the density at grid index 2, which is not the
+    density at the threshold."""
+    monkeypatch.setattr("filter.argrelextrema", _forced_extrema([500], []))
+    result = find_kde_mimima_threshold(pd.Series(range(1, 300), dtype="int64"), DEFAULT_LOW_THRESH)
+    assert len(result) == 6
+    assert result[0] == DEFAULT_LOW_THRESH
+    assert math.isnan(result[3])
+    assert not math.isnan(result[4]) and not math.isnan(result[5])
+
+
 def test_two_maxima_no_valley_falls_back(monkeypatch):
     """len(maxima) == 2 with no minimum between the peaks → default, not a ValueError."""
     monkeypatch.setattr("filter.argrelextrema", _forced_extrema([100, 900], []))

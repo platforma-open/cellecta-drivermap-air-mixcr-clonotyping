@@ -27,7 +27,7 @@ MILAB-6335: bring the Cellecta DriverMap AIR + MiXCR clonotyping block up to dat
 **MiXCR split and resource sizing**
 
 - MiXCR 4.7.0-413-develop. `mixcr analyze --dry-run-json` plans the run and each step (align, refineTagsAndSort, assemble, qc) runs as its own job, with CPU and memory from a per-step table and a scratch request sized from the reads.
-- `exportClones` runs on the `memory-from-limits` entrypoint with RAM sized from the `.clns` (it ran an 8 GiB heap inside a 1 GiB grant before). The hash-column, VBC and aggregation jobs request memory sized from their input.
+- `exportClones` runs on the `memory-from-limits` entrypoint with RAM sized from the `.clns`, floored at 24 GiB (it ran an 8 GiB heap inside a 1 GiB grant before). The hash-column, VBC and aggregation jobs request memory sized from their input.
 - Advanced Settings gain a memory and CPU override for every sample process and a per-step memory floor; the step list is planned on request in the prerun.
 - The log tab shows one log per MiXCR step.
 

@@ -18,11 +18,13 @@ self.body(func(inputs) {
 	exportArgs := inputs.exportArgs
 	keyColumns := inputs.keyColumns
 
-	// Bulk export on `memory-from-limits`; :mem-formula sizes it from the .clns.
+	// Bulk export on `memory-from-limits`; :mem-formula sizes it from the .clns. A 24 GiB floor:
+	// below a 23 GiB grant the heap binds on `grant - 3500 MiB`, and 16 GiB leaves a .clns of
+	// 0.25 to 0.38 GiB under its measured peak.
 	mixcrCmdBuilder := mixcrCmd.base(mixcrSw).
 		name("mixcr exportClones").
 		inMediumQueue().
-		resources({ onCPU: { cpu: 2, ram: memf.exportRam(inputs.perProcessMemGB, 16, 30) } }).
+		resources({ onCPU: { cpu: 2, ram: memf.exportRam(inputs.perProcessMemGB, 24, 30) } }).
 		printErrStreamToStdout().
 		arg("exportClones").
 		arg("--dont-split-files").

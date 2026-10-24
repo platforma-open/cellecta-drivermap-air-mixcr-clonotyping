@@ -56,8 +56,9 @@ function placeholder(rule: StepRule | undefined): string {
 </script>
 
 <template>
-  <PlBtnSecondary :disabled="app.model.data.preset === undefined" @click="listSteps">
-    {{ listed ? "Refresh Preset's Steps" : "List the steps of this preset" }}
+  <!-- The plan is a pure function of the preset, so once listed there is nothing to refresh. -->
+  <PlBtnSecondary v-if="!listed" :disabled="app.model.data.preset === undefined" @click="listSteps">
+    List the steps of this preset
   </PlBtnSecondary>
   <div v-if="planError" class="step-settings__empty">{{ planError }}</div>
   <div v-else-if="steps.length === 0" class="step-settings__empty">
