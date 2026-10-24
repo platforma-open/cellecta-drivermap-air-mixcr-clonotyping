@@ -1,0 +1,15 @@
+// The arguments that select the preset. `analyze` hands them to the first step of its plan, which
+// packs the resolved bundle into its output's header; every later step reads it from there.
+// :run-mixcr plans a run with them, and :plan-steps plans the steps the settings list before any
+// run. The block runs built-in Cellecta presets only, so the preset is a name.
+
+ll := import("@platforma-sdk/workflow-tengo:ll")
+
+apply := func(builder, presetName) {
+	ll.assert(is_string(presetName), "preset must be a preset name, got %v", presetName)
+	return builder.arg(presetName)
+}
+
+export {
+	apply: apply
+}

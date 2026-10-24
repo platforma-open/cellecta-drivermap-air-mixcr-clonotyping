@@ -1,6 +1,5 @@
 ll := import("@platforma-sdk/workflow-tengo:ll")
 self := import("@platforma-sdk/workflow-tengo:tpl")
-pConstants := import("@platforma-sdk/workflow-tengo:pframes.constants")
 slices := import("@platforma-sdk/workflow-tengo:slices")
 assets := import("@platforma-sdk/workflow-tengo:assets")
 exec := import("@platforma-sdk/workflow-tengo:exec")
@@ -11,13 +10,15 @@ self.defineOutputs("tsv")
 
 ptransformSw := assets.importSoftware("@platforma-open/milaboratories.software-ptransform:main")
 
+f := exec.formula
+
 self.body(func(inputs) {
 	inputData := inputs.__value__
 	inputDataMeta := inputData.getDataAsJson()
 
 	ll.assert(inputDataMeta.keyLength == 1, "unexpected number of aggregation axes")
 
-	mainAbundanceColumn := inputs.mainAbundanceColumn
+	rankingColumn := inputs.rankingColumn
 	cloneColumnSpecs := inputs.cloneColumnSpecs
 
 	// Adding clonotypeKey column
@@ -27,7 +28,7 @@ self.body(func(inputs) {
 			groupBy: ["clonotypeKey"],
 			aggregations: [ {
 				type: "max_by",
-				rankingCol: mainAbundanceColumn,
+				rankingCol: rankingColumn,
 				pickCols: slices.map(cloneColumnSpecs, func(col) {
 					return [col, col]
 				})
@@ -35,7 +36,15 @@ self.body(func(inputs) {
 		} ]
 	}
 
+	// All samples in one exec. ptransform's memory law is unmeasured; sized at 4x the summed
+	// per-sample TSVs with a 4 GiB floor.
 	aggregateBuilderCmd := exec.builder().
+		name("aggregate clonotypes").
+		inMediumQueue().
+		resources({ onCPU: {
+			cpu: 2,
+			ram: f.size("tsv").times(4).between(f.gib(4), f.gib(256)).staticFallback(f.gib(32))
+		} }).
 		printErrStreamToStdout().
 		software(ptransformSw).
 		arg("--workflow").arg("wf.json").
@@ -49,7 +58,7 @@ self.body(func(inputs) {
 		sampleId := key[0]
 		aggregateBuilderCmd.
 			arg(sampleId + ".tsv").
-			addFile(sampleId + ".tsv", inputFile)
+			addFile(sampleId + ".tsv", inputFile, { tag: "tsv" })
 	}
 
 	aggregateCmd := aggregateBuilderCmd.
