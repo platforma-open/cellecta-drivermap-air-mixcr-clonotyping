@@ -1,17 +1,15 @@
-ll := import("@platforma-sdk/workflow-tengo:ll")
 self := import("@platforma-sdk/workflow-tengo:tpl.light")
-pConstants := import("@platforma-sdk/workflow-tengo:pframes.constants")
-smart := import("@platforma-sdk/workflow-tengo:smart")
 assets := import("@platforma-sdk/workflow-tengo:assets")
 exec := import("@platforma-sdk/workflow-tengo:exec")
-
-json := import("json")
+mixcrCmd := import(":mixcr-cmd")
+memf := import(":mem-formula")
 
 self.defineOutputs(["tsv"])
 
-mixcrSw := assets.importSoftware("@platforma-open/milaboratories.software-mixcr:low-memory")
-ptransformSw := assets.importSoftware("@platforma-open/milaboratories.software-ptransform:main")
-hashColumnSw := assets.importSoftware("@platforma-open/milaboratories.mixcr-clonotyping-2.hash-column:main")
+mixcrSw := assets.importSoftware("@platforma-open/milaboratories.software-mixcr:memory-from-limits")
+hashColumnSw := assets.importSoftware("@platforma-open/cellecta.drivermap-mixcr-clonotyping.hash-column:main")
+
+f := exec.formula
 
 self.body(func(inputs) {
 	clnsFile := inputs.__value__
@@ -20,14 +18,14 @@ self.body(func(inputs) {
 	exportArgs := inputs.exportArgs
 	keyColumns := inputs.keyColumns
 
-
-	// Exporting clones from clns file
-	mixcrCmdBuilder := exec.builder().
+	// Bulk export on `memory-from-limits`; :mem-formula sizes it from the .clns. A 24 GiB floor:
+	// below a 23 GiB grant the heap binds on `grant - 3500 MiB`, and 16 GiB leaves a .clns of
+	// 0.25 to 0.38 GiB under its measured peak.
+	mixcrCmdBuilder := mixcrCmd.base(mixcrSw).
+		name("mixcr exportClones").
 		inMediumQueue().
+		resources({ onCPU: { cpu: 2, ram: memf.exportRam(inputs.perProcessMemGB, 24, 30) } }).
 		printErrStreamToStdout().
-		software(mixcrSw).
-		dontSaveStdoutOrStderr().
-		secret("MI_LICENSE", "MI_LICENSE").
 		arg("exportClones").
 		arg("--dont-split-files").
 		arg("--drop-default-fields").
@@ -35,33 +33,35 @@ self.body(func(inputs) {
 		arg("--export-productive-clones-only").
 		arg("--chains").arg(chains)
 
-
 	for argGrp in exportArgs {
 		for arg in argGrp {
 			mixcrCmdBuilder.arg(arg)
 		}
 	}
 
-	// Add cloneId and MIBC tags to output
+	// Add cloneId and MIVBC tags to output
 	mixcrCmdBuilder.arg("-cloneId")
 	mixcrCmdBuilder.arg("-tags").arg("Molecule")
 
 	mixcrCmd := mixcrCmdBuilder.
 		arg("clones.clns").
-		addFile("clones.clns", clnsFile).
+		addFile("clones.clns", clnsFile, { tag: "clns" }).
 		arg("clones.tsv").
 		saveFile("clones.tsv").
 		run()
-	
 
-	unprocessedTsv := mixcrCmd.getFile("clones.tsv")
-
-	
+	// polars reads the whole table; unmeasured, sized at 8x the TSV with a 4 GiB floor.
 	hashCmdBuilder := exec.builder().
+		name("hash clonotype key").
+		inMediumQueue().
+		resources({ onCPU: {
+			cpu: 2,
+			ram: f.size("tsv").times(8).between(f.gib(4), f.gib(128)).staticFallback(f.gib(16))
+		} }).
 		printErrStreamToStdout().
 		software(hashColumnSw).
 		arg("--input-table").arg("input.tsv").
-		addFile("input.tsv", unprocessedTsv).
+		addFile("input.tsv", mixcrCmd.getFile("clones.tsv"), { tag: "tsv" }).
 		arg("--output-table").arg("output.tsv").
 		arg("--calculate")
 

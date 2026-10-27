@@ -1,0 +1,91 @@
+"""Property tests for filter.find_kde_mimima_threshold.
+
+This is the function whose old version crashed with 'cannot unpack non-iterable NoneType'
+on degenerate VBC bins. The golden tests (test_filter.py) prove the port matches upstream
+on 5 fixtures; these prove the structural invariant the port was built to guarantee — a
+6-tuple of numbers on EVERY input, never None — over generated read-count distributions.
+
+Imported directly (not run via subprocess), so unlike the golden tests these are fast,
+need no test bed, and register in coverage. Not marked slow.
+"""
+
+import math
+
+import numpy as np
+import pandas as pd
+from filter import find_kde_mimima_threshold
+from hypothesis import given, settings
+from hypothesis import strategies as st
+
+DEFAULT_LOW_THRESH = 2
+
+
+@settings(deadline=None, max_examples=75)
+@given(reads=st.lists(st.integers(min_value=1, max_value=1_000_000), max_size=300))
+def test_always_returns_six_tuple_never_none(reads):
+    """Every code path returns a 6-tuple — never None, never a crash (the ported regression)."""
+    result = find_kde_mimima_threshold(pd.Series(reads, dtype="int64"), default_low_thresh=DEFAULT_LOW_THRESH)
+    assert result is not None
+    assert isinstance(result, tuple)
+    assert len(result) == 6
+
+
+@settings(deadline=None, max_examples=75)
+@given(reads=st.lists(st.integers(min_value=1, max_value=1_000_000), max_size=300))
+def test_threshold_is_a_positive_real(reads):
+    """The threshold (element 0) is always a positive number — a read-count cutoff, never NaN/None."""
+    threshold = find_kde_mimima_threshold(pd.Series(reads, dtype="int64"), default_low_thresh=DEFAULT_LOW_THRESH)[0]
+    assert isinstance(threshold, (int, float))
+    assert not (isinstance(threshold, float) and math.isnan(threshold))
+    assert threshold > 0
+
+
+def test_degenerate_bin_falls_back_to_default():
+    """Fewer than 10 points (a degenerate bin) → threshold falls back to default_low_thresh."""
+    result = find_kde_mimima_threshold(pd.Series([5, 9, 12], dtype="int64"), DEFAULT_LOW_THRESH)
+    assert result[0] == DEFAULT_LOW_THRESH
+
+
+def test_zero_variance_bin_falls_back_to_default():
+    """Enough points but zero spread (all identical) → bandwidth 0 → default_low_thresh."""
+    result = find_kde_mimima_threshold(pd.Series([100] * 30, dtype="int64"), DEFAULT_LOW_THRESH)
+    assert result[0] == DEFAULT_LOW_THRESH
+
+
+def _forced_extrema(maxima_idx, minima_idx):
+    """Fake argrelextrema returning fixed maxima/minima, to exercise the empty-valley paths."""
+
+    def fake(arr, comparator, *args, **kwargs):
+        idx = maxima_idx if comparator is np.greater else minima_idx
+        return (np.asarray(idx, dtype=int),)
+
+    return fake
+
+
+def test_one_maximum_no_valley_reports_nan_threshold_density(monkeypatch):
+    """Deliberate divergence from upstream main: one maximum and no minimum below it falls back
+    to default_low_thresh, and the threshold density is NaN. Upstream reports
+    exp(log_dens[default_low_thresh]) there — the density at grid index 2, which is not the
+    density at the threshold."""
+    monkeypatch.setattr("filter.argrelextrema", _forced_extrema([500], []))
+    result = find_kde_mimima_threshold(pd.Series(range(1, 300), dtype="int64"), DEFAULT_LOW_THRESH)
+    assert len(result) == 6
+    assert result[0] == DEFAULT_LOW_THRESH
+    assert math.isnan(result[3])
+    assert not math.isnan(result[4]) and not math.isnan(result[5])
+
+
+def test_two_maxima_no_valley_falls_back(monkeypatch):
+    """len(maxima) == 2 with no minimum between the peaks → default, not a ValueError."""
+    monkeypatch.setattr("filter.argrelextrema", _forced_extrema([100, 900], []))
+    result = find_kde_mimima_threshold(pd.Series(range(1, 300), dtype="int64"), DEFAULT_LOW_THRESH)
+    assert len(result) == 6
+    assert result[0] == DEFAULT_LOW_THRESH
+
+
+def test_many_maxima_no_valley_falls_back(monkeypatch):
+    """len(maxima) > 2 with no minimum between the outermost peaks → default, not a NameError."""
+    monkeypatch.setattr("filter.argrelextrema", _forced_extrema([100, 500, 900], []))
+    result = find_kde_mimima_threshold(pd.Series(range(1, 300), dtype="int64"), DEFAULT_LOW_THRESH)
+    assert len(result) == 6
+    assert result[0] == DEFAULT_LOW_THRESH

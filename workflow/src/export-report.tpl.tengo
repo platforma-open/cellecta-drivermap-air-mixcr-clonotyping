@@ -1,0 +1,60 @@
+// The QC report table: one row per sample, read off the MiXCR reports packed in each .clns by
+// `mixcr exportReportsTable`. The counts are MiXCR's, before the VBC filter.
+
+self := import("@platforma-sdk/workflow-tengo:tpl")
+assets := import("@platforma-sdk/workflow-tengo:assets")
+maps := import("@platforma-sdk/workflow-tengo:maps")
+slices := import("@platforma-sdk/workflow-tengo:slices")
+xsv := import("@platforma-sdk/workflow-tengo:pframes.xsv")
+pt := import("@platforma-sdk/workflow-tengo:pt")
+mixcrCmd := import(":mixcr-cmd")
+qcReportColumns := import(":qc-report-columns")
+
+json := import("json")
+
+self.defineOutputs("qcReportTable")
+
+mixcrSw := assets.importSoftware("@platforma-open/milaboratories.software-mixcr:memory-from-limits")
+
+// Computed by mixcr-clonotyping from its own filter exports; `exportReportsTable` does not
+// write them.
+_NOT_IN_REPORTS := ["assemble.clonotypesDroppedByStopCodons", "assemble.clonotypesDroppedByOutOfFrame"]
+
+self.body(func(inputs) {
+	presetSpecForBack := inputs.presetSpecForBack
+	umiTags := presetSpecForBack.umiTags
+	hasUmi := !is_undefined(umiTags) && len(umiTags) > 0
+
+	clnsFiles := inputs.clnsData.inputs()
+
+	exportReportCmd := mixcrCmd.base(mixcrSw).
+		name("mixcr exportReportsTable").
+		inMediumQueue().
+		// Reads only the reports in each .clns header, not the clones.
+		resources({ onCPU: { cpu: 1, ram: "4GiB" } }).
+		printErrStreamToStdout().
+		arg("exportReportsTable")
+	for key in maps.getKeys(clnsFiles) {
+		fileName := json.decode(key)[0] + ".clns"
+		exportReportCmd.addFile(fileName, clnsFiles[key]).arg(fileName)
+	}
+	exportReportCmd.arg("qc-report.tsv").saveFile("qc-report.tsv")
+	report := exportReportCmd.run()
+
+	// The sample id is the file name without ".clns".
+	wf := pt.workflow().inMediumQueue().mem("2GiB").cpu(1)
+	df := wf.frame(report.getFile("qc-report.tsv"), { xsvType: "tsv", inferSchema: false })
+	df.withColumns(
+		pt.col("fileName").strSlice(0, pt.col("fileName").strLenChars().minus(5)).alias("sampleId")
+	).save("qc-report-processed.tsv", { xsvType: "tsv" })
+	tsvFile := wf.run().getFile("qc-report-processed.tsv")
+
+	spec := qcReportColumns(hasUmi, false, inputs.sampleIdAxisSpec, [], [], umiTags, false, false).reportColumnsSpec
+	spec.columns = slices.filter(spec.columns, func(c) {
+		return !slices.hasElement(_NOT_IN_REPORTS, c.column)
+	})
+
+	return {
+		qcReportTable: xsv.importFile(tsvFile, "tsv", spec, { cpu: 1, mem: "4GiB" })
+	}
+})

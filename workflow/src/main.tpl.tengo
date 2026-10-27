@@ -1,15 +1,13 @@
-// "hello world"
 wf := import("@platforma-sdk/workflow-tengo:workflow")
-exec := import("@platforma-sdk/workflow-tengo:exec")
-assets:= import("@platforma-sdk/workflow-tengo:assets")
+assets := import("@platforma-sdk/workflow-tengo:assets")
 render := import("@platforma-sdk/workflow-tengo:render")
-maps := import("@platforma-sdk/workflow-tengo:maps")
-smart := import("@platforma-sdk/workflow-tengo:smart")
 pframes := import("@platforma-sdk/workflow-tengo:pframes")
-ll := import("@platforma-sdk/workflow-tengo:ll")
+times := import("times")
 
+calculatePresetInfoTpl := assets.importTemplate(":calculate-preset-info")
 processTpl := assets.importTemplate(":process")
 
+wf.setPreRun(assets.importTemplate(":prerun"))
 
 wf.body(func(args) {
 	input := wf.resolve(args.input)
@@ -19,17 +17,27 @@ wf.body(func(args) {
 		receptorsOrChains = args.chains
 	}
 
+	presetInfo := render.create(calculatePresetInfoTpl, { preset: args.preset })
+
 	runMixcr := render.createEphemeral(processTpl, {
 		inputSpec: input.getFutureInputField("spec"),
 		inputData: input.getFutureInputField("data"),
 		preset: args.preset,
+		presetContent: presetInfo.output("preset", 24 * times.hour),
+		presetSpecForBack: presetInfo.output("presetSpecForBack", 24 * times.hour),
 		blockId: wf.blockId().getDataAsJson(),
 		limitInput: args.limitInput,
-		receptorsOrChains: receptorsOrChains
+		receptorsOrChains: receptorsOrChains,
+		perProcessMemGB: args.perProcessMemGB,
+		perProcessCPUs: args.perProcessCPUs,
+		stepResources: args.stepResources
 	})
 
+	// The VBC/clonotype pipeline result (mixcr export -> VBC filter/normalize -> aggregate).
+	clonotypes := runMixcr.output("clonotypes")
+
 	exports := {
-		clones: runMixcr.output("clonotypes"),
+		clones: clonotypes,
 		clns: {
 			spec: runMixcr.output("clns.spec"),
 			data: runMixcr.output("clns.data")
@@ -41,8 +49,15 @@ wf.body(func(args) {
 			logs: runMixcr.output("logs.data"),
 			qc: pframes.exportColumnData(runMixcr.output("qc.data")),
 			reports: pframes.exportColumnData(runMixcr.output("reports.data")),
-			clones: pframes.exportFrame(runMixcr.output("clonotypes")), //@TODO: remove from outputs
-			clns: runMixcr.output("clns.data") //@TODO: remove from outputs
+			// `clones` is in outputs too, so the model's status waits on the VBC pipeline and
+			// not only on MiXCR. A frame in outputs must go through exportFrame.
+			clones: pframes.exportFrame(clonotypes),
+
+			// Per-chain VBC step status: [chain] -> per-sample cloneTableTsv ResourceMap. The
+			// model walks both levels to find a failed VBC step the clones frame hides.
+			vbcStatus: runMixcr.output("vbcStatus"),
+
+			qcReportTable: pframes.exportFrame(runMixcr.output("qcReportTable"))
 		},
 		exports: exports
 	}

@@ -1,16 +1,14 @@
 <script lang="ts" setup>
-import type { AlignReport } from '@platforma-open/milaboratories.mixcr-clonotyping-2.model';
-import { PlChartStackedBar } from '@platforma-sdk/ui-vue';
-import { computed } from 'vue';
-import { useChainsChartSettings } from './chainsChartSettings';
+import type { AlignReport } from "@platforma-open/cellecta.drivermap-mixcr-clonotyping.model";
+import { PlChartStackedBar } from "@platforma-sdk/ui-vue";
+import { toRef } from "vue";
+import { useChainsChartSettings } from "./chainsChartSettings";
 
 const props = defineProps<{
   alignReport?: AlignReport;
 }>();
 
-const alignReport = computed(() => props.alignReport);
-
-const settings = useChainsChartSettings(alignReport);
+const settings = useChainsChartSettings(toRef(props, "alignReport"));
 </script>
 
 <template>

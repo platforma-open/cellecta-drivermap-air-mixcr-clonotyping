@@ -9,28 +9,44 @@ self.defineOutputs(["tsv"])
 vbcFilterSw := assets.importSoftware("@platforma-open/cellecta.drivermap-mixcr-clonotyping.vbc-filtering:main")
 vbcNormalizationSw := assets.importSoftware("@platforma-open/cellecta.drivermap-mixcr-clonotyping.vbc-normalization:main")
 
+f := exec.formula
+
+// pandas holds the per-(clone, VBC) table in memory several times over; unmeasured, sized at
+// 10x the TSV with a 4 GiB floor.
+_resources := func() {
+	return { onCPU: {
+		cpu: 1,
+		ram: f.size("tsv").times(10).between(f.gib(4), f.gib(128)).staticFallback(f.gib(16))
+	} }
+}
+
 self.body(func(inputs) {
 	inputFile := inputs.__value__
 
-	// Exporting clones from clns file
 	filterCmd := exec.builder().
+		name("vbc filter").
+		inMediumQueue().
+		resources(_resources()).
+		printErrStreamToStdout().
 		software(vbcFilterSw).
-		dontSaveStdoutOrStderr().
 		arg("input.tsv").
 		arg("output").
-		addFile("input.tsv", inputFile).
+		addFile("input.tsv", inputFile, { tag: "tsv" }).
 		saveFile("output.tsv").
 		saveFile("output.kde.maximas.txt").
 		run()
 
 	normalizeCmd := exec.builder().
+		name("vbc normalize").
+		inMediumQueue().
+		resources(_resources()).
+		printErrStreamToStdout().
 		software(vbcNormalizationSw).
-		dontSaveStdoutOrStderr().
 		arg("input.kde.maximas.txt").
 		arg("input.tsv").
 		arg("output.tsv").
 		addFile("input.kde.maximas.txt", filterCmd.getFile("output.kde.maximas.txt")).
-		addFile("input.tsv", filterCmd.getFile("output.tsv")).
+		addFile("input.tsv", filterCmd.getFile("output.tsv"), { tag: "tsv" }).
 		saveFile("output.tsv").
 		run()
 

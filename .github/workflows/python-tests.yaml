@@ -1,0 +1,114 @@
+name: Python Tests
+
+on:
+  merge_group:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches:
+      - 'main'
+  push:
+    branches:
+      - 'main'
+  workflow_dispatch: {}
+
+env:
+  # Single source for the uv version across every job (GitHub Actions has no YAML anchors).
+  # The local floor lives in software/pyproject.toml ([tool.uv] required-version); CI pins
+  # the exact version here for reproducible runs.
+  UV_VERSION: "0.11.16"
+
+jobs:
+  ruff:
+    # Lint + format gate over all software (one shared [tool.ruff] config in
+    # software/pyproject.toml; test-data/ is excluded — verbatim upstream scripts).
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: software
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: software/uv.lock
+      - name: Install (dev tooling + all groups)
+        run: uv sync --all-groups --locked
+      - name: Ruff check
+        run: uv run ruff check
+      - name: Ruff format check
+        run: uv run ruff format --check
+
+  pytest:
+    # Fast lane — every trigger. Excludes the @slow golden comparisons. One venv, run from
+    # software/: covers filter's threshold invariants + empty/QC-fail and normalize's
+    # round-half-up math across both packages.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: software
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: software/uv.lock
+      - name: Install (all groups for the test venv)
+        run: uv sync --all-groups --locked
+      - name: Run pytest (fast)
+        run: uv run pytest -m "not slow"
+
+  pytest-slow:
+    # Slow lane — the @slow golden comparisons against upstream reference/ on the committed
+    # bed (each runs the KDE filter). Skipped on pull_request to keep the per-push PR loop
+    # fast; still runs on the merge queue, on main, and on manual dispatch — so it gates merges.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: software
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: software/uv.lock
+      - name: Install (all groups for the test venv)
+        run: uv sync --all-groups --locked
+      - name: Run pytest (slow)
+        run: uv run pytest -m "slow"
+
+  requirements-sync:
+    # Each package's src/requirements.txt is generated from its dependency-group in the
+    # shared software/pyproject.toml (the single source of truth) and is what pl-pkg builds
+    # from. This runs the SAME command devs run — `pnpm software:reqs` (turbo -> each
+    # package's `uv pip compile --group <pkg>`) — and fails if it changes any committed file.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'pnpm'
+      - name: Install workspace (provides turbo)
+        run: pnpm install --frozen-lockfile
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: ${{ env.UV_VERSION }}
+      - name: Regenerate every requirements.txt (same as local `pnpm software:reqs`)
+        run: pnpm software:reqs
+      - name: Verify requirements.txt files are in sync with pyproject.toml
+        run: |
+          if ! git diff --exit-code -- 'software/*/src/requirements.txt'; then
+            echo ""
+            echo "::error::a software/*/src/requirements.txt is out of sync with software/pyproject.toml"
+            echo "Runtime pins live in software/pyproject.toml [dependency-groups]; src/requirements.txt is generated."
+            echo "Resolve locally with:"
+            echo "    pnpm software:reqs"
+            echo "then commit the updated requirements.txt files."
+            exit 1
+          fi
+          echo "All software/*/src/requirements.txt are in sync with software/pyproject.toml."

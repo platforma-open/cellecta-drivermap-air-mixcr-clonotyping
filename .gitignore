@@ -8,3 +8,18 @@ log/
 .turbo
 vite.config.*.timestamp-*
 pkg-*.tgz
+software/**/*.tgz
+.DS_Store
+.vscode/sftp.json
+test-dry-run.json
+
+# Python test byproducts (VBC software golden tests)
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.venv/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
