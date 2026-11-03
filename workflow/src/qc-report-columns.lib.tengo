@@ -1,0 +1,768 @@
+// The column specs of the `mixcr exportReportsTable` output for a bulk run. The refine-tags
+// columns are added only when the preset carries UMI tags.
+
+text := import("text")
+
+getQcReportColumns := func(sampleIdAxisSpec, umiTags) {
+    if is_undefined(umiTags) {
+        umiTags = []
+    }
+    // Bulk sequencing columns
+    baseColumns := [
+    {
+        column: "MiXCRVersion",
+        id: "mixcr-version",
+        allowNA: true,
+        naRegex: "",
+        spec: {
+            name: "mixcr.com/reports/MiXCRVersion",
+            valueType: "String",
+            annotations: {
+                "pl7.app/table/orderPriority": "100000",
+                "pl7.app/table/visibility": "optional",
+                "pl7.app/label": "MiXCR Version"
+            }
+        }
+    },
+    {
+        column: "align.alignmentsFailed",
+        id: "align-alignments-failed",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/align/alignmentsFailed",
+            valueType: "Long",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/table/orderPriority": "94000",
+                "pl7.app/table/visibility": "optional",
+                "pl7.app/label": "Alignments Failed"
+            }
+        }
+    },
+    {
+        column: "align.alignmentsFailed.LowTotalScore",
+        id: "align-alignments-failed-low-total-score",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/align/alignmentsFailed/LowTotalScore",
+            valueType: "Long",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/table/orderPriority": "94100",
+                "pl7.app/table/visibility": "optional",
+                "pl7.app/label": "Alignments Failed - Low Total Score"
+            }
+        }
+    },
+    {
+        column: "align.alignmentsFailed.LowTotalScorePercents",
+        id: "align-alignments-failed-low-total-score-percents",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/align/alignmentsFailed/LowTotalScorePercents",
+            valueType: "Double",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/max": "100",
+                "pl7.app/table/orderPriority": "94200",
+                "pl7.app/table/visibility": "default",
+                "pl7.app/label": "Alignments Failed - Low Total Score (%)"
+            }
+        }
+    },
+    {
+        column: "align.alignmentsFailed.NoBarcode",
+        id: "align-alignments-failed-no-barcode",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/align/alignmentsFailed/NoBarcode",
+            valueType: "Long",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/table/orderPriority": "94300",
+                "pl7.app/table/visibility": "optional",
+                "pl7.app/label": "Alignments Failed - No Barcode"
+            }
+        }
+    },
+    {
+        column: "align.alignmentsFailed.NoBarcodePercents",
+        id: "align-alignments-failed-no-barcode-percents",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/align/alignmentsFailed/NoBarcodePercents",
+            valueType: "Double",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/max": "100",
+                "pl7.app/table/orderPriority": "94400",
+                "pl7.app/table/visibility": "default",
+                "pl7.app/label": "Alignments Failed - No Barcode (%)"
+            }
+        }
+    },
+    {
+        column: "align.alignmentsFailed.NoCDR3Parts",
+        id: "align-alignments-failed-no-cdr3-parts",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/align/alignmentsFailed/NoCDR3Parts",
+            valueType: "Long",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/table/orderPriority": "94500",
+                "pl7.app/table/visibility": "optional",
+                "pl7.app/label": "Alignments Failed - No CDR3 Parts"
+            }
+        }
+    },
+    {
+        column: "align.alignmentsFailed.NoCDR3PartsPercents",
+        id: "align-alignments-failed-no-cdr3-parts-percents",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/align/alignmentsFailed/NoCDR3PartsPercents",
+            valueType: "Double",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/max": "100",
+                "pl7.app/table/orderPriority": "94600",
+                "pl7.app/table/visibility": "default",
+                "pl7.app/label": "Alignments Failed - No CDR3 Parts (%)"
+            }
+        }
+    },
+    {
+        column: "align.alignmentsFailed.NoHits",
+        id: "align-alignments-failed-no-hits",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/align/alignmentsFailed/NoHits",
+            valueType: "Long",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/table/orderPriority": "94700",
+                "pl7.app/table/visibility": "optional",
+                "pl7.app/label": "Alignments Failed - No Hits"
+            }
+        }
+    },
+    {
+        column: "align.alignmentsFailed.NoHitsPercents",
+        id: "align-alignments-failed-no-hits-percents",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/align/alignmentsFailed/NoHitsPercents",
+            valueType: "Double",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/max": "100",
+                "pl7.app/table/orderPriority": "94800",
+                "pl7.app/table/visibility": "default",
+                "pl7.app/label": "Alignments Failed - No Hits (%)"
+            }
+        }
+    },
+    {
+        column: "align.alignmentsFailed.NoJHits",
+        id: "align-alignments-failed-no-j-hits",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/align/alignmentsFailed/NoJHits",
+            valueType: "Long",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/table/orderPriority": "94900",
+                "pl7.app/table/visibility": "optional",
+                "pl7.app/label": "Alignments Failed - No J Hits"
+            }
+        }
+    },
+    {
+        column: "align.alignmentsFailed.NoJHitsPercents",
+        id: "align-alignments-failed-no-j-hits-percents",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/align/alignmentsFailed/NoJHitsPercents",
+            valueType: "Double",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/max": "100",
+                "pl7.app/table/orderPriority": "94910",
+                "pl7.app/table/visibility": "default",
+                "pl7.app/label": "Alignments Failed - No J Hits (%)"
+            }
+        }
+    },
+    {
+        column: "align.alignmentsFailed.NoVHits",
+        id: "align-alignments-failed-no-v-hits",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/align/alignmentsFailed/NoVHits",
+            valueType: "Long",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/table/orderPriority": "94920",
+                "pl7.app/table/visibility": "optional",
+                "pl7.app/label": "Alignments Failed - No V Hits"
+            }
+        }
+    },
+    {
+        column: "align.alignmentsFailed.NoVHitsPercents",
+        id: "align-alignments-failed-no-v-hits-percents",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/align/alignmentsFailed/NoVHitsPercents",
+            valueType: "Double",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/max": "100",
+                "pl7.app/table/orderPriority": "94930",
+                "pl7.app/table/visibility": "default",
+                "pl7.app/label": "Alignments Failed - No V Hits (%)"
+            }
+        }
+    },
+    {
+        column: "align.alignmentsFailedPercents",
+        id: "align-alignments-failed-percents",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/align/alignmentsFailedPercents",
+            valueType: "Double",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/max": "100",
+                "pl7.app/table/orderPriority": "94100",
+                "pl7.app/table/visibility": "default",
+                "pl7.app/label": "Alignments Failed (%)"
+            }
+        }
+    },
+    {
+        column: "align.overlapped",
+        id: "align-overlapped",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/align/overlapped",
+            valueType: "Long",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/table/orderPriority": "95200",
+                "pl7.app/table/visibility": "optional",
+                "pl7.app/label": "Overlapped"
+            }
+        }
+    },
+    {
+        column: "align.overlappedAndAligned",
+        id: "align-overlapped-and-aligned",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/align/overlappedAndAligned",
+            valueType: "Long",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/table/orderPriority": "95300",
+                "pl7.app/table/visibility": "optional",
+                "pl7.app/label": "Overlapped and Aligned"
+            }
+        }
+    },
+    {
+        column: "align.overlappedAndAlignedPercents",
+        id: "align-overlapped-and-aligned-percents",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/align/overlappedAndAlignedPercents",
+            valueType: "Double",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/max": "100",
+                "pl7.app/table/orderPriority": "95400",
+                "pl7.app/table/visibility": "default",
+                "pl7.app/label": "Overlapped and Aligned (%)"
+            }
+        }
+    },
+    {
+        column: "align.overlappedPercents",
+        id: "align-overlapped-percents",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/align/overlappedPercents",
+            valueType: "Double",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/max": "100",
+                "pl7.app/table/orderPriority": "95500",
+                "pl7.app/table/visibility": "default",
+                "pl7.app/label": "Overlapped (%)"
+            }
+        }
+    },
+    {
+        column: "align.patternMatchedReads",
+        id: "align-pattern-matched-reads",
+        allowNA: true,
+        naRegex: "",
+        spec: {
+            name: "mixcr.com/reports/align/patternMatchedReads",
+            valueType: "Long",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/table/orderPriority": "95600",
+                "pl7.app/table/visibility": "optional",
+                "pl7.app/label": "Pattern Matched Reads"
+            }
+        }
+    },
+    {
+        column: "align.patternMatchedReadsPercents",
+        id: "align-pattern-matched-reads-percents",
+        allowNA: true,
+        naRegex: "",
+        spec: {
+            name: "mixcr.com/reports/align/patternMatchedReadsPercents",
+            valueType: "Double",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/max": "100",
+                "pl7.app/table/orderPriority": "95700",
+                "pl7.app/table/visibility": "default",
+                "pl7.app/label": "Pattern Matched Reads (%)"
+            }
+        }
+    },
+    {
+        column: "align.successAligned",
+        id: "align-success-aligned",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/align/successAligned",
+            valueType: "Long",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/table/orderPriority": "105000",
+                "pl7.app/table/visibility": "default",
+                "pl7.app/label": "Successfully Aligned"
+            }
+        }
+    },
+    {
+        column: "align.successAlignedPercents",
+        id: "align-success-aligned-percents",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/align/successAlignedPercents",
+            valueType: "Double",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/max": "100",
+                "pl7.app/table/orderPriority": "106000",
+                "pl7.app/table/visibility": "default",
+                "pl7.app/label": "Successfully Aligned (%)"
+            }
+        }
+    },
+    {
+        column: "assemble.droppedReads.failedMapping",
+        id: "assemble-dropped-reads-failed-mapping",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/assemble/droppedReads/failedMapping",
+            valueType: "Long",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/table/orderPriority": "75000",
+                "pl7.app/table/visibility": "optional",
+                "pl7.app/label": "Dropped Reads - Failed Mapping"
+            }
+        }
+    },
+    {
+        column: "assemble.droppedReads.failedMappingPercents",
+        id: "assemble-dropped-reads-failed-mapping-percents",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/assemble/droppedReads/failedMappingPercents",
+            valueType: "Double",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/max": "100",
+                "pl7.app/table/orderPriority": "74100",
+                "pl7.app/table/visibility": "default",
+                "pl7.app/label": "Dropped Reads - Failed Mapping (%)"
+            }
+        }
+    },
+    {
+        column: "assemble.droppedReads.lowQual",
+        id: "assemble-dropped-reads-low-qual",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/assemble/droppedReads/lowQual",
+            valueType: "Long",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/table/orderPriority": "74200",
+                "pl7.app/table/visibility": "optional",
+                "pl7.app/label": "Dropped Reads - Low Quality"
+            }
+        }
+    },
+    {
+        column: "assemble.droppedReads.lowQualPercents",
+        id: "assemble-dropped-reads-low-qual-percents",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/assemble/droppedReads/lowQualPercents",
+            valueType: "Double",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/max": "100",
+                "pl7.app/table/orderPriority": "74300",
+                "pl7.app/table/visibility": "default",
+                "pl7.app/label": "Dropped Reads - Low Quality (%)"
+            }
+        }
+    },
+    {
+        column: "assemble.droppedReads.noClonalSeq",
+        id: "assemble-dropped-reads-no-clonal-seq",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/assemble/droppedReads/noClonalSeq",
+            valueType: "Long",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/table/orderPriority": "74400",
+                "pl7.app/table/visibility": "optional",
+                "pl7.app/label": "Dropped Reads - No Clonal Sequence"
+            }
+        }
+    },
+    {
+        column: "assemble.droppedReads.noClonalSeqPercents",
+        id: "assemble-dropped-reads-no-clonal-seq-percents",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/assemble/droppedReads/noClonalSeqPercents",
+            valueType: "Double",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/max": "100",
+                "pl7.app/table/orderPriority": "74500",
+                "pl7.app/table/visibility": "default",
+                "pl7.app/label": "Dropped Reads - No Clonal Sequence (%)"
+            }
+        }
+    },
+    {
+        column: "assemble.preCloneAssembler.unassignedAlignments",
+        id: "assemble-pre-clone-assembler-unassigned-alignments",
+        allowNA: true,
+        naRegex: "^[a-zA-Z_]*$",
+        spec: {
+            name: "mixcr.com/reports/assemble/preCloneAssembler/unassignedAlignments",
+            valueType: "Long",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/table/orderPriority": "74600",
+                "pl7.app/table/visibility": "optional",
+                "pl7.app/label": "Pre-Clone Assembler - Unassigned Alignments"
+            }
+        }
+    },
+    {
+        column: "assemble.preCloneAssembler.unassignedAlignmentsPercents",
+        id: "assemble-pre-clone-assembler-unassigned-alignments-percents",
+        allowNA: true,
+        naRegex: "^[a-zA-Z_]*$",
+        spec: {
+            name: "mixcr.com/reports/assemble/preCloneAssembler/unassignedAlignmentsPercents",
+            valueType: "Double",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/max": "100",
+                "pl7.app/table/orderPriority": "74700",
+                "pl7.app/table/visibility": "default",
+                "pl7.app/label": "Pre-Clone Assembler - Unassigned Alignments (%)"
+            }
+        }
+    },
+    {
+        column: "assemble.readsClusteredInCorrection",
+        id: "assemble-reads-clustered-in-correction",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/assemble/readsClusteredInCorrection",
+            valueType: "Long",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/table/orderPriority": "74800",
+                "pl7.app/table/visibility": "optional",
+                "pl7.app/label": "Reads Clustered in Correction"
+            }
+        }
+    },
+    {
+        column: "assemble.readsClusteredInCorrectionPercents",
+        id: "assemble-reads-clustered-in-correction-percents",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/assemble/readsClusteredInCorrectionPercents",
+            valueType: "Double",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/max": "100",
+                "pl7.app/table/orderPriority": "74900",
+                "pl7.app/table/visibility": "default",
+                "pl7.app/label": "Reads Clustered in Correction (%)"
+            }
+        }
+    },
+    {
+        column: "readsUsedInClonotypes",
+        id: "reads-used-in-clonotypes",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/readsUsedInClonotypes",
+            valueType: "Long",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/table/orderPriority": "108000",
+                "pl7.app/table/visibility": "optional",
+                "pl7.app/label": "Reads Used in Clonotypes"
+            }
+        }
+    },
+    {
+        column: "totalClonotypes",
+        id: "total-clonotypes",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/totalClonotypes",
+            valueType: "Long",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/table/orderPriority": "109000",
+                "pl7.app/table/visibility": "default",
+                "pl7.app/label": "Total Clonotypes",
+                "pl7.app/description": "Sum of unique clonotypes across all chains."
+            }
+        }
+    },
+    {
+        column: "totalReads",
+        id: "total-reads",
+        allowNA: true,
+        naRegex: "NaN",
+        spec: {
+            name: "mixcr.com/reports/totalReads",
+            valueType: "Long",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/table/orderPriority": "110000",
+                "pl7.app/table/visibility": "default",
+                "pl7.app/label": "Total Reads"
+            }
+        }
+    }]
+
+    dataWithUmiColumns := []
+    for idx, umiTag in umiTags {
+        orderBase := 85000 + idx * 10
+        orderBasePercents := 85100 + idx * 10
+        orderDiversity := 85200 + idx * 10
+        orderDiversityPercents := 85300 + idx * 10
+        tagL := text.to_lower(umiTag)
+        dataWithUmiColumns = dataWithUmiColumns + [{
+            column: "refineTags." + umiTag + ".outputCount",
+            id: "refine-tags-" + tagL + "-output-count",
+            allowNA: true,
+            naRegex: "NaN",
+            spec: {
+                name: "mixcr.com/reports/refineTags/" + umiTag + "/outputCount",
+                valueType: "Long",
+                annotations: {
+                    "pl7.app/min": "0",
+                    "pl7.app/table/orderPriority": string(orderBase),
+                    "pl7.app/table/visibility": "optional",
+                    "pl7.app/label": "Refine Tags " + umiTag + " - Output Count"
+                }
+            }
+        },
+        {
+            column: "refineTags." + umiTag + ".outputCountPercents",
+            id: "refine-tags-" + tagL + "-output-count-percents",
+            allowNA: true,
+            naRegex: "NaN",
+            spec: {
+                name: "mixcr.com/reports/refineTags/" + umiTag + "/outputCountPercents",
+                valueType: "Double",
+                annotations: {
+                    "pl7.app/min": "0",
+                    "pl7.app/max": "100",
+                    "pl7.app/table/orderPriority": string(orderBasePercents),
+                    "pl7.app/table/visibility": "default",
+                    "pl7.app/label": "Refine Tags " + umiTag + " - Output Count (%)"
+                }
+            }
+        },
+        {
+            column: "refineTags." + umiTag + ".outputDiversity",
+            id: "refine-tags-" + tagL + "-output-diversity",
+            allowNA: true,
+            naRegex: "NaN",
+            spec: {
+                name: "mixcr.com/reports/refineTags/" + umiTag + "/outputDiversity",
+                valueType: "Long",
+                annotations: {
+                    "pl7.app/min": "0",
+                    "pl7.app/table/orderPriority": string(orderDiversity),
+                    "pl7.app/table/visibility": "optional",
+                    "pl7.app/label": "Refine Tags " + umiTag + " - Output Diversity"
+                }
+            }
+        },
+        {
+            column: "refineTags." + umiTag + ".outputDiversityPercents",
+            id: "refine-tags-" + tagL + "-output-diversity-percents",
+            allowNA: true,
+            naRegex: "NaN",
+            spec: {
+                name: "mixcr.com/reports/refineTags/" + umiTag + "/outputDiversityPercents",
+                valueType: "Double",
+                annotations: {
+                    "pl7.app/min": "0",
+                    "pl7.app/max": "100",
+                    "pl7.app/table/orderPriority": string(orderDiversityPercents),
+                    "pl7.app/table/visibility": "default",
+                    "pl7.app/label": "Refine Tags " + umiTag + " - Output Diversity (%)"
+                }
+            }
+        }]
+    }
+
+    dataWithUmiColumns = dataWithUmiColumns + [{
+        column: "refineTags.numberOfGroupsAccepted",
+        id: "refine-tags-number-of-groups-accepted",
+        allowNA: true,
+        naRegex: "",
+        spec: {
+            name: "mixcr.com/reports/refineTags/numberOfGroupsAccepted",
+            valueType: "Long",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/table/orderPriority": "85400",
+                "pl7.app/table/visibility": "optional",
+                "pl7.app/label": "Refine Tags - Number of Groups Accepted"
+            }
+        }
+    },
+    {
+        column: "refineTags.numberOfGroupsAcceptedPercents",
+        id: "refine-tags-number-of-groups-accepted-percents",
+        allowNA: true,
+        naRegex: "",
+        spec: {
+            name: "mixcr.com/reports/refineTags/numberOfGroupsAcceptedPercents",
+            valueType: "Double",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/max": "100",
+                "pl7.app/table/orderPriority": "85500",
+                "pl7.app/table/visibility": "default",
+                "pl7.app/label": "Refine Tags - Number of Groups Accepted (%)"
+            }
+        }
+    },
+    {
+        column: "refineTags.totalWeightAccepted",
+        id: "refine-tags-total-weight-accepted",
+        allowNA: true,
+        naRegex: "",
+        spec: {
+            name: "mixcr.com/reports/refineTags/totalWeightAccepted",
+            valueType: "Long",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/table/orderPriority": "85600",
+                "pl7.app/table/visibility": "optional",
+                "pl7.app/label": "Refine Tags - Total Weight Accepted"
+            }
+        }
+    },
+    {
+        column: "refineTags.totalWeightAcceptedPercents",
+        id: "refine-tags-total-weight-accepted-percents",
+        allowNA: true,
+        naRegex: "",
+        spec: {
+            name: "mixcr.com/reports/refineTags/totalWeightAcceptedPercents",
+            valueType: "Double",
+            annotations: {
+                "pl7.app/min": "0",
+                "pl7.app/max": "100",
+                "pl7.app/table/orderPriority": "85700",
+                "pl7.app/table/visibility": "default",
+                "pl7.app/label": "Refine Tags - Total Weight Accepted (%)"
+            }
+        }
+    }
+    ]
+
+    columns := baseColumns
+    if len(umiTags) > 0 {
+        columns = columns + dataWithUmiColumns
+    }
+
+    axes := [{
+		column: "sampleId",
+		spec: sampleIdAxisSpec
+	}]
+
+    return {
+        reportColumnsSpec: {
+            axes: axes,
+            columns: columns,
+            storageFormat: "Parquet",
+            partitionKeyLength: 0
+        }
+    }   
+}
+
+export getQcReportColumns

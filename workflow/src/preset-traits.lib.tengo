@@ -1,0 +1,51 @@
+// The two properties of the resolved preset `mixcr exportPreset` writes that make the block
+// reject it. The built-in Cellecta presets have neither; the check guards a MiXCR release that
+// changes them.
+
+text := import("text")
+
+// _hasSampleTag reports whether a tag pattern names a sample tag: MiXCR takes every tag whose
+// name starts with "S" as one (mitool `TagType.inferType`).
+_hasSampleTag := func(pattern) {
+	for match in text.re_find("\\(([A-Za-z][A-Za-z0-9_]*):", pattern, -1) {
+		if text.has_prefix(text.to_upper(match[1].text), "S") {
+			return true
+		}
+	}
+	return false
+}
+
+// splitsBySample reports whether `align` writes one file per sample: it has splitBySample set,
+// MiXCR's default, and its tag pattern names a sample tag.
+splitsBySample := func(presetContent) {
+	align := is_map(presetContent) ? presetContent.align : undefined
+	if !is_map(align) || !is_string(align.tagPattern) {
+		return false
+	}
+	return align.splitBySample != false && _hasSampleTag(align.tagPattern)
+}
+
+// hasQcChecks reports whether the preset carries qc checks. `analyze` runs `qc` only then, and the block
+// rejects a run without them.
+hasQcChecks := func(presetContent) {
+	return is_map(presetContent) && is_map(presetContent.qc) && is_array(presetContent.qc.checks) &&
+		len(presetContent.qc.checks) > 0
+}
+
+// unsupportedReason returns why the block rejects a resolved preset, or undefined when it runs
+// it. :process rejects with it, and the prerun reports it before any run.
+unsupportedReason := func(presetContent) {
+	if splitsBySample(presetContent) {
+		return "The preset splits the reads by a sample tag, which the block does not support."
+	}
+	if !hasQcChecks(presetContent) {
+		return "The preset carries no qc checks, which the block needs for its QC report."
+	}
+	return undefined
+}
+
+export {
+	splitsBySample: splitsBySample,
+	hasQcChecks: hasQcChecks,
+	unsupportedReason: unsupportedReason
+}
