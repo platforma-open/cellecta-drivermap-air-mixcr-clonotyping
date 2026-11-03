@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import QcSection from '../components/QcSection.vue';
-import type { Result } from '../results';
+import { computed } from "vue";
+import QcSection from "../components/QcSection.vue";
+import type { Result } from "../results";
 const props = defineProps<{
   sampleData: Result;
 }>();
