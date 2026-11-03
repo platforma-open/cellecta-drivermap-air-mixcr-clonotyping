@@ -1,0 +1,89 @@
+// Collapse the per-clone clones table to one row per clonotypeKey for the abundance
+// p-frame import. Runs per sample (no cross-sample aggregation).
+//
+// Why: `mixcr exportClones` can emit several clones (distinct cloneId) that share a
+// clonotypeKey ({nSeqCDR3, bestVGene, bestJGene, bestCGene}). The per-sample abundancePf
+// is keyed by clonotypeKey and the xsv importer requires that key to be unique, so the
+// abundance columns are summed per clonotypeKey. (The good path's zero-estimate drop usually
+// removes the low-read clones that collide; the unreliable-normalization path keeps them, so
+// without this the import fails with "Multiple rows with the same axis key".)
+//
+// NA handling: readCount / readFraction are always numeric. templateEstimate /
+// templateEstimateFraction are "NA" for the whole sample when normalization is unreliable;
+// summing those naively would give 0, so the count-mask keeps an all-NA group null instead —
+// preserving the "couldn't measure" signal for downstream rather than asserting a measured 0.
+//
+// Done in the workflow (pt) rather than in vbc-normalization so no python software package
+// changes — the per-clone "tsv" output feeding agg-clones is untouched.
+
+self := import("@platforma-sdk/workflow-tengo:tpl")
+pt := import("@platforma-sdk/workflow-tengo:pt")
+
+self.defineOutputs("tsv")
+
+self.body(func(inputs) {
+	inputFile := inputs.__value__
+
+	// "NA" -> null, then cast to the column's value type.
+	naCast := func(col, typ) {
+		return pt.when(pt.col(col).matchesEcmaRegex("^NA$")).
+			then(pt.lit(undefined).cast(typ)).
+			otherwise(pt.col(col).cast(typ)).
+			alias(col)
+	}
+
+	// summed value, or null when the whole group was NA (non-null count == 0).
+	sumOrNull := func(col, typ) {
+		return pt.when(pt.col(col + "Cnt").gt(0)).
+			then(pt.col(col + "Sum")).
+			otherwise(pt.lit(undefined).cast(typ)).
+			alias(col)
+	}
+
+	wf := pt.workflow().inMediumQueue()
+
+	df := wf.frame({
+		file: inputFile,
+		xsvType: "tsv",
+		schema: [
+			{ column: "clonotypeKey", type: "String" },
+			{ column: "readCount", type: "String" },
+			{ column: "readFraction", type: "String" },
+			{ column: "templateEstimate", type: "String" },
+			{ column: "templateEstimateFraction", type: "String" }
+		]
+	}, { inferSchema: false })
+
+	df = df.withColumns(
+		naCast("readCount", "Long"),
+		naCast("readFraction", "Double"),
+		naCast("templateEstimate", "Long"),
+		naCast("templateEstimateFraction", "Double")
+	)
+
+	// readCount / readFraction never NA -> plain sum; molecule columns -> sum + non-null count
+	// so the mask below can restore null for an all-NA (degenerate) group.
+	df = df.groupBy("clonotypeKey").agg(
+		pt.col("readCount").sum().alias("readCount"),
+		pt.col("readFraction").sum().alias("readFraction"),
+		pt.col("templateEstimate").sum().alias("templateEstimateSum"),
+		pt.col("templateEstimate").count().alias("templateEstimateCnt"),
+		pt.col("templateEstimateFraction").sum().alias("templateEstimateFractionSum"),
+		pt.col("templateEstimateFraction").count().alias("templateEstimateFractionCnt")
+	)
+
+	df = df.withColumns(
+		sumOrNull("templateEstimate", "Long"),
+		sumOrNull("templateEstimateFraction", "Double")
+	)
+
+	df = df.select("clonotypeKey", "readCount", "readFraction", "templateEstimate", "templateEstimateFraction")
+
+	df.save("output.tsv")
+
+	result := wf.run()
+
+	return {
+		tsv: result.getFile("output.tsv")
+	}
+})

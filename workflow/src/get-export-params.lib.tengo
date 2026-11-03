@@ -12,22 +12,35 @@ presets := {
 		assemblingFeature: "CDR3",
 		features: ["CDR3"],
 		coreGeneFeatures: {},
-		keyColumns: ["nSeqCDR3", "bestVGene", "bestJGene", "bestCGene"]
+		keyFeatures: ["CDR3"],
+		keyGeneColumns: ["bestVGene", "bestJGene", "bestCGene"]
 	},
 	"cellecta-human-dna-xcr-mivbc-drivermap-air-v2": {
 		assemblingFeature: "CDR3",
 		features: ["CDR3"],
 		coreGeneFeatures: {},
-		keyColumns: ["nSeqCDR3", "bestVGene", "bestJGene", "bestCGene"]
+		keyFeatures: ["CDR3"],
+		keyGeneColumns: ["bestVGene", "bestJGene", "bestCGene"]
 	},
 	"cellecta-human-rna-xcr-full-length-mivbc-drivermap-air-v2": {
-		assemblingFeature: "VDJRegion",
+		// This kit assembles clones by {CDR1Begin:FR4End}, not VDJRegion, so no
+		// nSeqVDJRegion column is exported. The clone key is the consecutive
+		// regions spanning CDR1Begin..FR4End (FR1 precedes CDR1Begin and is
+		// exported for display only). assemblingFeature is the display anchor for
+		// the default-visible aa column (CDR3, the conventional anchor); it must
+		// be one of `features`.
+		assemblingFeature: "CDR3",
 		features: ["FR1", "CDR1", "FR2", "CDR2", "FR3", "CDR3", "FR4"],
 		coreGeneFeatures: {
 			"V": "{FR1Begin:FR3End}",
 			"J": "FR4"
 		},
-		keyColumns: ["nSeqVDJRegion", "bestVGene", "bestJGene", "bestCGene"]
+		// Key = the regions spanning the assembling feature CDR1Begin..FR4End (FR1 precedes
+		// CDR1Begin and is exported for display only). keyColumns is derived from these as
+		// nSeq<Feature> + keyGeneColumns (see keyColumnsFor) — a single source of truth so the
+		// exported features and the clone key cannot drift apart.
+		keyFeatures: ["CDR1", "FR2", "CDR2", "FR3", "CDR3", "FR4"],
+		keyGeneColumns: ["bestVGene", "bestJGene", "bestCGene"]
 	}
 }
 
@@ -36,6 +49,24 @@ a := func(order, defaultVisibility, spec) {
 		"pl7.app/table/orderPriority": string(order),
 		"pl7.app/table/visibility": defaultVisibility ? "default" : "optional"
 	})
+}
+
+/**
+ * Derive the clonotype-key columns for a preset: each key nucleotide feature as its
+ * exported nSeq<Feature> column, followed by the gene key columns. Single source of truth
+ * — keyColumns is computed from keyFeatures, not kept as a hand-edited parallel list, so the
+ * exported features and the clone key cannot drift apart. Each keyFeature must be in the
+ * preset's `features` (else its nSeq column is never exported); the mismatch is caught here
+ * with a clear message rather than as a downstream "column does not exist" panic.
+ */
+keyColumnsFor := func(presetInfo) {
+	keyColumns := []
+	for f in presetInfo.keyFeatures {
+		ll.assert(slices.hasElement(presetInfo.features, f),
+			"keyFeature %v is not in preset.features — nSeq%v is never exported", f, f)
+		keyColumns = append(keyColumns, "nSeq" + f)
+	}
+	return keyColumns + presetInfo.keyGeneColumns
 }
 
 toCombinedDomainValue := func(spec) {
@@ -65,12 +96,11 @@ addSpec := func(columns, additionalSpec) {
  * Calculates the export specifications columns for a specific preset
  *
  * @param preset - MiXCR preset name
- * @param blockId - The block ID
  * @return An object containing:
  *   - mixcrExportArgs: an array of arrays of MiXCR arg groups
  *   - columnSpecs: an array of column specifications for clonotypes
  */
-cloneColumns := func(preset, blockId) {
+cloneColumns := func(preset) {
 	presetInfo := presets[preset]
 	assemblingFeature := presetInfo.assemblingFeature
 	coreGeneFeatures := presetInfo.coreGeneFeatures
@@ -127,9 +157,6 @@ cloneColumns := func(preset, blockId) {
 
 	// Sequences
 
-	// column with nucleotide sequence of this feature will be marked as anchor
-	
-
 	for featureU in features {
 		featureL := text.to_lower(featureU)
 		for isAminoAcid in [false, true] {
@@ -183,19 +210,7 @@ cloneColumns := func(preset, blockId) {
 
 	orderP = 10000
 
-	mutationColumnVariants := [
-	// {
-	// 	name: "Mutations",
-	// 	valueType: "String",
-	// 	labelPart: " mutations in ",
-	// 	idPart: "-mutations-"
-	// }, {
-	// 	name: "MutationsCount",
-	// 	valueType: "Int",
-	// 	labelPart: " mutations count in ",
-	// 	idPart: "-mutations-count-"
-	// }, 
-	{
+	mutationColumnVariants := [ {
 		name: "MutationsRate",
 		valueType: "Double",
 		labelPart: " mutations rate in ",
@@ -293,14 +308,9 @@ cloneColumns := func(preset, blockId) {
 
 /**
  * Calculates abundance columns specs
- *
- * @param preset - MiXCR preset name
- * @param blockId - The block ID
  */
-abundanceColumns := func(preset, blockId) {
+abundanceColumns := func() {
 
-	presetInfo := presets[preset]
-	
 	// for now we only support presets for Air Assay v2 with VBCs
 	mixcrExportArgs := [["-readCount"], ["-readFraction"]]
 
@@ -340,10 +350,28 @@ abundanceColumns := func(preset, blockId) {
 		}
 	} ]
 
+	// ============================================================================
+	// Molecule-count abundances (templateEstimate / templateEstimateFraction).
+	//
+	// allowNA: true is REQUIRED. When VBC=1/2/3 normalization is all unreliable for a
+	// sample, vbc-normalization emits the literal "NA" for these columns for every clone
+	// in that sample (a per-sample degenerate condition, faithful to upstream). With
+	// allowNA: false the pfconv "Binary" import hard-errors ("N/A value: NA not allowed")
+	// and fails the whole multi-sample run on a single bad sample; allowNA: true imports
+	// the cell as null instead. (readCount/readFraction stay allowNA: false — MiXCR always
+	// emits a valid value for them.)
+	//
+	// TODO(MILAB-6335 — Layer C / follow-up): this degradation is currently SILENT.
+	// Downstream blocks read null molecule counts as 0 (e.g. repertoire-diversity does
+	// fill_null(0)), so an unreliable-normalization sample quietly looks like an empty
+	// repertoire in molecule-based views, and the only "unreliable" signal is a
+	// vbc-filtering stdout warning the user never sees in the UI. Surface a per-sample
+	// QC flag / notification so the analyst knows molecule counts are missing for it.
+	// ============================================================================
 	abundanceColumnSpecs += [ {
 		column: "templateEstimate",
 		id: "template-estimate",
-		allowNA: false,
+		allowNA: true,
 		spec: {
 			name: "pl7.app/vdj/uniqueMoleculeCount",
 			valueType: "Long",
@@ -360,7 +388,7 @@ abundanceColumns := func(preset, blockId) {
 	}, {
 		column: "templateEstimateFraction",
 		id: "template-estimate-fraction",
-		allowNA: false,
+		allowNA: true, // see molecule-count note above: "NA" on degenerate normalization
 		spec: {
 			name: "pl7.app/vdj/uniqueMoleculeFraction",
 			valueType: "Double",
@@ -377,12 +405,28 @@ abundanceColumns := func(preset, blockId) {
 	} ]
 
 
-	mainAbundanceColumn := "templateEstimate"
+	// Representative-clone ranking column for the by-clone-key aggregation (agg-clones
+	// max_by, run AFTER aggregating across samples by sampleId). It picks which clone's
+	// DISPLAY metadata (allele / isotype / D-gene calls, which can differ between clones
+	// sharing one clonotypeKey) represents the key — it is NOT an abundance measure.
+	//
+	// MUST be a never-NA column with consistent units across samples: ptransform ranks via
+	// pandas idxmax, so an all-NaN group — a clonotype seen only in unreliable-normalization
+	// sample(s), where templateEstimate is "NA" — makes idxmax return NaN, then data.loc[NaN]
+	// raises KeyError and crashes the run. templateEstimate fails both tests (NA on degenerate
+	// samples; a coalesce(templateEstimate, readCount) fallback would mix molecule- and
+	// read-unit values across samples). readCount is always present and read depth is a sound
+	// proxy for which sample has the most reliable metadata calls (allele/isotype calling is
+	// read-driven). Cross-sample caveat: the representative may come from the deepest-sequenced
+	// sample rather than the one with the most molecules — accepted, since this only selects
+	// display metadata, not abundance. (Locked by get-export-params.test.tengo
+	// Test_ranking_column_is_never_na.)
+	rankingColumn := "readCount"
 
 	return {
 		mixcrExportArgs : mixcrExportArgs,
 		abundanceColumnSpecs: abundanceColumnSpecs,
-		mainAbundanceColumn: mainAbundanceColumn
+		rankingColumn: rankingColumn
 	}
 }
 
@@ -392,10 +436,7 @@ abundanceColumns := func(preset, blockId) {
  * @param preset - MiXCR preset name
  * @param blockId - The block ID
  */
-keyAxesSpec := func(preset, blockId, cloneColumnSpecs) {
-
-	presetInfo := presets[preset]
-	
+keyAxesSpec := func(blockId, cloneColumnSpecs, keyColumns) {
 
 	// Creating a column map for fast search
 	columnsByName := {}
@@ -404,7 +445,7 @@ keyAxesSpec := func(preset, blockId, cloneColumnSpecs) {
 	}
 
 	keyStructure := []
-	for keyColumn in presetInfo.keyColumns {
+	for keyColumn in keyColumns {
 		columnSpec := columnsByName[keyColumn]
 		if is_undefined(columnSpec) {
 			ll.panic("column " + keyColumn + " does not exist in export")
@@ -442,15 +483,16 @@ keyAxesSpec := func(preset, blockId, cloneColumnSpecs) {
 getExportParams := func(preset, blockId) {
 
 	presetInfo := presets[preset]
-	cloneColumns := cloneColumns(preset, blockId)
-	abundanceColumns := abundanceColumns(preset, blockId)
-	keyAxesSpec := keyAxesSpec(preset, blockId, cloneColumns.cloneColumnSpecs)
+	keyColumns := keyColumnsFor(presetInfo)
+	cloneColumns := cloneColumns(preset)
+	abundanceColumns := abundanceColumns()
+	keyAxesSpec := keyAxesSpec(blockId, cloneColumns.cloneColumnSpecs, keyColumns)
 	mixcrExportArgs := cloneColumns.mixcrExportArgs + abundanceColumns.mixcrExportArgs
 
 	return {
-		keyColumns: presetInfo.keyColumns,
+		keyColumns: keyColumns,
 		abundanceColumnSpecs: abundanceColumns.abundanceColumnSpecs,
-		mainAbundanceColumn: abundanceColumns.mainAbundanceColumn,
+		rankingColumn: abundanceColumns.rankingColumn,
 		mixcrExportArgs: mixcrExportArgs,
 		keyAxesSpec: keyAxesSpec,
 		cloneColumnSpecs: cloneColumns.cloneColumnSpecs

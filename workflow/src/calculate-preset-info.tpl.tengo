@@ -1,0 +1,40 @@
+// Resolves the preset: `mixcr exportPreset` writes the resolved parameter bundle, and
+// `presetSpecificationsForBack` reads the facts the block needs off it (report types, tags,
+// assembling feature).
+
+self := import("@platforma-sdk/workflow-tengo:tpl")
+mixcrCmd := import(":mixcr-cmd")
+assets := import("@platforma-sdk/workflow-tengo:assets")
+
+mixcrSw := assets.importSoftware("@platforma-open/milaboratories.software-mixcr:memory-from-limits")
+
+self.defineOutputs("preset", "presetSpecForBack")
+
+self.body(func(inputs) {
+	exportPresetCmd := mixcrCmd.base(mixcrSw).
+		name("mixcr exportPreset").
+		inLightQueue().
+		mem("512MiB").
+		arg("exportPreset").
+		arg("--preset-name").arg(inputs.preset).
+		arg("preset.json").
+		saveFileContent("preset.json").
+		saveFile("preset.json").
+		run()
+
+	forBackCmd := mixcrCmd.base(mixcrSw).
+		name("mixcr presetSpecificationsForBack").
+		inLightQueue().
+		mem("512MiB").
+		arg("presetSpecificationsForBack").
+		addFile("preset.yaml", exportPresetCmd.getFile("preset.json")).
+		arg("preset.yaml").
+		arg("presetForBack.json").
+		saveFileContent("presetForBack.json").
+		run()
+
+	return {
+		preset: exportPresetCmd.getFileContent("preset.json"),
+		presetSpecForBack: forBackCmd.getFileContent("presetForBack.json")
+	}
+})
