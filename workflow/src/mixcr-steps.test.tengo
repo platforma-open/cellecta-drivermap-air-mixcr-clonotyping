@@ -1,0 +1,76 @@
+test := import("@platforma-sdk/workflow-tengo:test")
+ms := import(":mixcr-steps")
+
+// The step lists `mixcr analyze --dry-run-json` writes with MiXCR 4.7.0-415-develop for each
+// Cellecta preset, the reads `input_{{R}}.fastq.gz` and the output prefix `result`.
+_cellecta := func(preset) {
+	return [
+		["align", "--report", "result.align.report.txt", "--json-report", "result.align.report.json", "--preset", preset, "input_{{R}}.fastq.gz", "result.alignments.vdjca"],
+		["refineTagsAndSort", "--report", "result.refine.report.txt", "--json-report", "result.refine.report.json", "result.alignments.vdjca", "result.refined.vdjca"],
+		["assemble", "--report", "result.assemble.report.txt", "--json-report", "result.assemble.report.json", "result.refined.vdjca", "result.clns"],
+		["qc", "--print-to-stdout", "result.clns", "result.qc.txt", "result.qc.json"],
+		["exportClones", "result.clns", "result.clones.tsv"]
+	]
+}
+
+_PRESETS := [
+	"cellecta-human-rna-xcr-mivbc-drivermap-air-v2",
+	"cellecta-human-rna-xcr-full-length-mivbc-drivermap-air-v2",
+	"cellecta-human-dna-xcr-mivbc-drivermap-air-v2"
+]
+
+_UMI := _cellecta(_PRESETS[0])
+
+_keys := func(plan) {
+	out := []
+	for c in plan.commands {
+		out = append(out, c.logKey)
+	}
+	return out
+}
+
+TestUmiStepsChainTheirFiles := func() {
+	plan := ms.commands(_UMI, "input_{{R}}.fastq.gz")
+	test.isEqual(["001:align", "002:refineTagsAndSort", "003:assemble", "004:qc"], _keys(plan))
+	align := plan.commands[0]
+	test.isTrue(align.stageReads)
+	test.isEqual(["result.align.report.txt", "result.align.report.json", "result.alignments.vdjca"], align.save)
+	test.isEqual(["result.alignments.vdjca"], plan.commands[1].stageSteps)
+	test.isEqual("result.clns", plan.clns)
+	test.isEqual("result.qc.json", plan.qcJson)
+	// assemble writes the clones and qc its report; the steps before write intermediates only.
+	test.isEqual([false, false, true, true], [plan.commands[0].writesFinalOutput, plan.commands[1].writesFinalOutput,
+		plan.commands[2].writesFinalOutput, plan.commands[3].writesFinalOutput])
+}
+
+TestExportStepsAreDropped := func() {
+	for c in ms.commands(_UMI, "input_{{R}}.fastq.gz").commands {
+		test.isFalse(c.key == "exportClones")
+	}
+}
+
+TestStepsOfChecksTheFormatVersion := func() {
+	test.isEqual(_UMI, ms.stepsOf({ formatVersion: 1, steps: _UMI }))
+	test.isTrue(ms.FORMAT_VERSION == 1)
+}
+
+// Every Cellecta preset plans the same four steps, writes the align and assemble reports under
+// the names :process reads, and runs qc on the assembled .clns.
+TestEveryCellectaPresetPlansTheSameSteps := func() {
+	for preset in _PRESETS {
+		plan := ms.commands(_cellecta(preset), "input_{{R}}.fastq.gz")
+		test.isEqual(["001:align", "002:refineTagsAndSort", "003:assemble", "004:qc"], _keys(plan))
+		test.isEqual("result.clns", plan.clns)
+		test.isEqual("result.qc.json", plan.qcJson)
+		saved := {}
+		for c in plan.commands {
+			for name in c.save {
+				saved[name] = true
+			}
+		}
+		for step in ["align", "assemble"] {
+			test.isTrue(saved["result." + step + ".report.json"])
+			test.isTrue(saved["result." + step + ".report.txt"])
+		}
+	}
+}

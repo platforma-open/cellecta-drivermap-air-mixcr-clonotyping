@@ -1,20 +1,29 @@
 <script setup lang="ts">
-import { PlLogView } from '@platforma-sdk/ui-vue';
-import type { Result } from '../results';
+import { PlAccordion, PlAccordionSection, PlLogView } from "@platforma-sdk/ui-vue";
+import { reactive } from "vue";
+import type { Result } from "../results";
 
-const props = defineProps<{
+defineProps<{
   sampleData: Result;
 }>();
+
+// Every step's section opens by default; the user collapses the ones read.
+const collapsed = reactive<Record<string, boolean>>({});
 </script>
 
 <template>
-  <PlLogView :log-handle="props.sampleData.logHandle" />
+  <!-- One section per MiXCR step, in run order. A section honours its model-value only inside a
+       PlAccordion with `multiple`; standalone it keeps its own closed state. -->
+  <PlAccordion v-if="sampleData.logs.length > 1" multiple>
+    <PlAccordionSection
+      v-for="log in sampleData.logs"
+      :key="log.key"
+      :label="log.label"
+      :model-value="!collapsed[log.key]"
+      @update:model-value="collapsed[log.key] = !$event"
+    >
+      <PlLogView :log-handle="log.handle" />
+    </PlAccordionSection>
+  </PlAccordion>
+  <PlLogView v-else :log-handle="sampleData.logs[0]?.handle" />
 </template>
-
-<style lang="css">
-/** Remove this fix when using ui-vue > v1.8.25 */
-.pl-log-view {
-    max-height: calc(100% - var(--contour-offset));
-    max-width: calc(100% - var(--contour-offset));
-}
-</style>
