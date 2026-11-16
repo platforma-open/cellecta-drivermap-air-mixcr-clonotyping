@@ -152,10 +152,9 @@ function collectSettled<T>(
 function parseSettledMap<T>(
   acc: TreeNodeAccessor | undefined,
   parse: (acc: TreeNodeAccessor) => T | undefined,
-): PColumnResourceMapData<NonNullable<T>> | undefined {
-  if (acc === undefined) return undefined;
+): PColumnResourceMapData<NonNullable<T>> {
   const data: { key: PColumnKey; value: NonNullable<T> }[] = [];
-  const isComplete = collectSettled(acc, parse, data, []);
+  const isComplete = acc !== undefined && collectSettled(acc, parse, data, []);
   return { isComplete, data };
 }
 
