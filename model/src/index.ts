@@ -21,9 +21,9 @@ import {
 } from "@platforma-sdk/model";
 import { kind } from "@platforma-open/cellecta.drivermap-mixcr-clonotyping.kind";
 import type { BlockArgs, StepResources } from "./args";
-import { StepResources as StepResourcesSchema } from "./args";
 import { DEFAULT_CHAINS, upgradeLegacyArgs, type LegacyArgs, type LegacyUiState } from "./legacy";
 import { ProgressPrefix } from "./progress";
+import { settingsIssue } from "./run-gate";
 import type { PresetSupport, StepDefaults } from "./step-resources";
 import { dropEmptyOverrides } from "./step-resources";
 
@@ -41,6 +41,8 @@ export type BlockData = {
    * the operator's click, so the step plan runs once per click and never for an operator who
    * did not ask. Absent until then. */
   listStepsPreset?: string;
+  /** How many times the operator retried a failed step plan. Absent until the first retry. */
+  listStepsAttempt?: number;
   tableState: PlDataTableStateV2;
 };
 
@@ -230,24 +232,14 @@ export const platforma = BlockModelV3.create({ dataModel, kind })
     preset: data.preset,
     // The step list is planned only for the preset the operator asked it for.
     listSteps: data.listStepsPreset !== undefined && data.listStepsPreset === data.preset,
+    planAttempt: data.listStepsAttempt,
   }))
 
   .args<BlockArgs>((data) => {
     if (data.input === undefined) throw new Error("Input dataset is required");
     if (data.preset === undefined) throw new Error("Preset is required");
-    if (data.chains.length === 0) throw new Error("Chains selection is required");
-    for (const [field, value] of Object.entries({
-      limitInput: data.limitInput,
-      perProcessMemGB: data.perProcessMemGB,
-      perProcessCPUs: data.perProcessCPUs,
-    }))
-      if (value !== undefined && !(Number.isInteger(value) && value > 0))
-        throw new Error(`${field} must be a positive whole number`);
-    if (
-      data.stepResources !== undefined &&
-      !StepResourcesSchema.safeParse(data.stepResources).success
-    )
-      throw new Error("Per-step resources are invalid");
+    const issue = settingsIssue(data);
+    if (issue !== undefined) throw new Error(issue);
     return {
       input: data.input,
       preset: data.preset,
@@ -337,8 +329,9 @@ export const platforma = BlockModelV3.create({ dataModel, kind })
     // running, `getIsReadyOrError()` is false and we report ok/undefined.
     if (!outputs.getIsReadyOrError()) return undefined;
 
-    // Channel 1: any output field root errored.
-    if (outputs.listOutputFields().some((key) => outputs.resolve(key)?.getError() !== undefined)) {
+    // Channel 1: any output root errored. The workflow's outputs are input fields of a locked
+    // map, so those are the fields to scan.
+    if (outputs.listInputFields().some((key) => resolveOrError(outputs, key) === "error")) {
       throw new Error("Clonotype processing failed. See per-sample logs for details.");
     }
 
@@ -429,5 +422,6 @@ export * from "./args";
 export * from "./progress";
 export * from "./qc";
 export * from "./reports";
+export * from "./run-gate";
 export * from "./status";
 export * from "./step-resources";

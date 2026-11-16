@@ -24,10 +24,15 @@ wf.body(func(args) {
 		outputs.presetSupport = presetSupport.output("presetSupport", CACHE_PERIOD)
 
 		if args.listSteps {
-			planSteps := render.create(planStepsTpl, {
+			planInputs := {
 				preset: args.preset,
 				presetContent: presetInfo.output("preset", CACHE_PERIOD)
-			})
+			}
+			// A retry of a failed plan: the count makes it a new plan, not the failed one again.
+			if !is_undefined(args.planAttempt) {
+				planInputs.attempt = args.planAttempt
+			}
+			planSteps := render.create(planStepsTpl, planInputs)
 			outputs.stepDefaults = planSteps.output("stepDefaults", CACHE_PERIOD)
 		}
 	}

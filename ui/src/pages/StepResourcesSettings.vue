@@ -43,6 +43,11 @@ function listSteps() {
   app.model.data.listStepsPreset = app.model.data.preset;
 }
 
+// A failed plan is planned again only when its request changes.
+function retryPlan() {
+  app.model.data.listStepsAttempt = (app.model.data.listStepsAttempt ?? 0) + 1;
+}
+
 // The memory floor is the one field the editor sets. min matches the model's schema
 // (StepResourceOverride): a value below it would make the block unable to run.
 function memFloor(step: string): number | undefined {
@@ -69,7 +74,10 @@ function placeholder(rule: StepRule | undefined): string {
   <PlBtnSecondary v-if="!listed" :disabled="app.model.data.preset === undefined" @click="listSteps">
     List the steps of this preset
   </PlBtnSecondary>
-  <div v-if="planError" class="step-settings__empty">{{ planError }}</div>
+  <template v-if="planError">
+    <div class="step-settings__empty">{{ planError }}</div>
+    <PlBtnSecondary @click="retryPlan">Try again</PlBtnSecondary>
+  </template>
   <div v-else-if="steps.length === 0" class="step-settings__empty">
     {{ listed ? "Planning the steps…" : "List the steps, or run the block once." }}
   </div>

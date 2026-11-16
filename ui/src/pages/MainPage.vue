@@ -42,9 +42,14 @@ const fileExports = computed((): FileExportEntry[] | undefined => {
   const labels = app.model.outputs.sampleLabels;
   if (tables === undefined || labels === undefined) return undefined;
   const exports: FileExportEntry[] = [];
+  const used = new Set<string>();
   for (const t of tables) {
     if (t.handle === undefined) continue;
-    const name = `${labels[t.sampleId] ?? t.sampleId}_${t.chain}_${t.stage}`;
+    // A label may hold a path separator, and two samples may share one.
+    const label = (labels[t.sampleId] ?? t.sampleId).replace(/[\\/]/g, "_");
+    const plain = `${label}_${t.chain}_${t.stage}`;
+    const name = used.has(plain) ? `${label}_${t.sampleId}_${t.chain}_${t.stage}` : plain;
+    used.add(name);
     exports.push({
       importHandle: name as ImportFileHandle,
       blobHandle: t.handle,

@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { DEFAULT_TITLE } from "@platforma-open/cellecta.drivermap-mixcr-clonotyping.model";
+import {
+  DEFAULT_TITLE,
+  settingsIssue,
+} from "@platforma-open/cellecta.drivermap-mixcr-clonotyping.model";
 import { plRefsEqual, type PlRef } from "@platforma-sdk/model";
 import {
   PlAccordionSection,
@@ -10,10 +13,14 @@ import {
   PlNumberField,
   PlSectionSeparator,
 } from "@platforma-sdk/ui-vue";
+import { computed } from "vue";
 import { useApp } from "../app";
 import StepResourcesSettings from "./StepResourcesSettings.vue";
 
 const app = useApp();
+
+// Run stays disabled while a setting is invalid; this says which one.
+const issue = computed(() => settingsIssue(app.model.data));
 
 // The model's title context has no result pool, so the title is stored on the user's pick.
 function setInput(inputRef?: PlRef) {
@@ -71,6 +78,7 @@ const presetOptions = [
   >
     <template #tooltip> Restrict the analysis to certain receptor types. </template>
   </PlDropdownMulti>
+  <PlAlert v-if="issue" type="warn">{{ issue }} The block cannot run until this is fixed.</PlAlert>
 
   <PlAccordionSection label="Advanced Settings">
     <PlNumberField
