@@ -24,21 +24,20 @@ presets := {
 	},
 	"cellecta-human-rna-xcr-full-length-mivbc-drivermap-air-v2": {
 		// This kit assembles clones by {CDR1Begin:FR4End}, not VDJRegion, so no
-		// nSeqVDJRegion column is exported. The clone key is the consecutive
-		// regions spanning CDR1Begin..FR4End (FR1 precedes CDR1Begin and is
-		// exported for display only). assemblingFeature is the display anchor for
-		// the default-visible aa column (CDR3, the conventional anchor); it must
-		// be one of `features`.
+		// nSeqVDJRegion column is exported. A clone carries only its assembling feature, so
+		// FR1 (before CDR1Begin) is never covered, whatever the read length:
+		// exporting it, or any range starting at FR1Begin, gives an all-empty column.
+		// assemblingFeature is the display anchor for the default-visible aa column (CDR3,
+		// the conventional anchor); it must be one of `features`.
 		assemblingFeature: "CDR3",
-		features: ["FR1", "CDR1", "FR2", "CDR2", "FR3", "CDR3", "FR4"],
+		features: ["CDR1", "FR2", "CDR2", "FR3", "CDR3", "FR4"],
 		coreGeneFeatures: {
-			"V": "{FR1Begin:FR3End}",
+			"V": "{CDR1Begin:FR3End}",
 			"J": "FR4"
 		},
-		// Key = the regions spanning the assembling feature CDR1Begin..FR4End (FR1 precedes
-		// CDR1Begin and is exported for display only). keyColumns is derived from these as
-		// nSeq<Feature> + keyGeneColumns (see keyColumnsFor) — a single source of truth so the
-		// exported features and the clone key cannot drift apart.
+		// Key = the regions spanning the assembling feature CDR1Begin..FR4End. keyColumns is
+		// derived from these as nSeq<Feature> + keyGeneColumns (see keyColumnsFor) — a single
+		// source of truth so the exported features and the clone key cannot drift apart.
 		keyFeatures: ["CDR1", "FR2", "CDR2", "FR3", "CDR3", "FR4"],
 		keyGeneColumns: ["bestVGene", "bestJGene", "bestCGene"]
 	}
