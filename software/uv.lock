@@ -20,6 +20,7 @@ dev = [
     { name = "seaborn" },
 ]
 hash-column = [
+    { name = "polars" },
     { name = "polars-hash" },
     { name = "polars-lts-cpu" },
 ]
@@ -45,6 +46,7 @@ dev = [
     { name = "seaborn", specifier = ">=0.13" },
 ]
 hash-column = [
+    { name = "polars", specifier = "==1.30.0" },
     { name = "polars-hash", specifier = "==0.5.4" },
     { name = "polars-lts-cpu", specifier = "==1.30.0" },
 ]

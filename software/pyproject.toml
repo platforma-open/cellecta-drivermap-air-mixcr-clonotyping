@@ -1,6 +1,6 @@
 # Single dev/test project for all of the block's python software packages.
 #
-# This file is NOT shipped — pl-pkg builds each package from its own src/requirements.txt
+# This file is NOT shipped — `block-tools software build` builds each package from its own src/requirements.txt
 # (offline pip toolset). It exists only for the dev/test toolchain: one uv venv, one lock,
 # one ruff/pytest/coverage config. Each package's runtime pins live in a PEP 735
 # dependency-group named after the package; `pnpm software:reqs` compiles each group to
@@ -16,7 +16,10 @@ dependencies = []
 # Keep aligned with the wheels the runenv ships (@platforma-open/milaboratories.runenv-python-3:3.12.6).
 vbc-filtering = ["pandas==2.2.3", "numpy==2.2.6", "scikit-learn==1.6.1", "scipy==1.15.3"]
 vbc-normalization = ["pandas==2.2.3"]
-hash-column = ["polars-hash==0.5.4", "polars-lts-cpu==1.30.0"]
+# polars-hash depends on the regular `polars` distribution with no version, and the package
+# is installed with its dependencies. Without the pin, pip adds the latest `polars` next to
+# polars-lts-cpu: two versions of the one `polars` import package.
+hash-column = ["polars-hash==0.5.4", "polars-lts-cpu==1.30.0", "polars==1.30.0"]
 
 # Dev-only tooling. `uv sync --all-groups` installs every group above plus this, so the
 # golden tests' upstream reference scripts (which import numpy/scikit-learn/scipy via the
@@ -37,13 +40,7 @@ dev = [
 # uv via setup-uv for reproducibility.
 required-version = ">=0.11.16"
 
-# polars-hash depends on the regular `polars` distribution with no version pin, which uv
-# otherwise resolves to the latest (1.41.x). That gets installed alongside the pinned
-# polars-lts-cpu 1.30.0 — both distributions ship the `polars` import package, so on Linux
-# the dev venv becomes a mix of two versions and `import polars` breaks (e.g. NoPickleOption).
-# Constrain the transitive polars to the same version as polars-lts-cpu so the (unavoidable)
-# co-install is version-consistent. Production is unaffected: each src/requirements.txt is
-# compiled with `--no-deps`, so only polars-lts-cpu ships there, never the regular polars.
+# Keeps the dev venv's transitive `polars` at the version the hash-column group pins.
 constraint-dependencies = ["polars==1.30.0"]
 
 [tool.pytest.ini_options]

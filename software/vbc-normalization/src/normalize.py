@@ -29,10 +29,12 @@ def quantify_templates(maxima_file, input_file, output_file):
     # normFactor is the right-peak max of the VBC=1 bin: column 3 of the maximas' first row.
     normFactor = float("nan")
     if os.path.exists(maxima_file) and os.path.getsize(maxima_file) > 0:
+        # The filter writes either an empty file or well-formed rows. Anything else is a broken
+        # file, and NA estimates would hide it.
         try:
             normFactor = float(pd.read_csv(maxima_file, sep="\t", header=None).iloc[0, 3])
         except Exception as e:
-            print(f"Error reading maxima file: {e}")
+            sys.exit(f"Cannot read the normalization factor from {maxima_file}: {e}")
 
     if "readCount" not in df.columns:
         sys.exit(f"'readCount' column missing in {input_file}")

@@ -109,15 +109,15 @@ def test_read_fraction_recomputed_over_survivors():
 
 @pytest.mark.parametrize(
     "maxima_contents",
-    ["1\t2\t0\tnan\t0\t0\t0\n", "1\t2\t0\tbad\t0\t0\t0\n", None],
-    ids=["nan-value", "unparseable", "missing-file"],
+    ["1\t2\t0\tnan\t0\t0\t0\n", "", None],
+    ids=["nan-value", "empty-file", "missing-file"],
 )
 def test_unusable_normfactor_yields_na(maxima_contents):
     """Any unusable normalization factor -> literal 'NA' for every clone, never a crash.
 
     Three triggers, one contract (the degenerate-VBC case): an explicit NaN in the maximas,
-    a corrupt maximas whose normFactor cell won't parse (caught -> NaN), or no maximas file
-    at all. The fast counterpart to the slow golden test_nan_normfactor_yields_na. Read with
+    the empty maximas the filter writes when it skips the KDE, or no maximas file at all. The
+    fast counterpart to the slow golden test_nan_normfactor_yields_na. Read with
     na_filter=False so the literal 'NA' survives (pandas would coerce it to NaN).
     """
     with tempfile.TemporaryDirectory() as d:
@@ -151,3 +151,22 @@ def test_missing_readcount_fails():
 
     assert "readCount" in str(exc.value.code)
     assert exc.value.code != 0
+
+
+@pytest.mark.parametrize(
+    "maxima_contents",
+    ["1\t2\t0\tbad\t0\t0\t0\n", "1\t2\n"],
+    ids=["unparseable-cell", "too-few-columns"],
+)
+def test_broken_maximas_fails(maxima_contents):
+    """A maximas file that is neither empty nor well formed fails the step: NA estimates would
+    hide a broken filter output."""
+    with tempfile.TemporaryDirectory() as d:
+        maxima = os.path.join(d, "m.kde.maximas.txt")
+        with open(maxima, "w") as f:
+            f.write(maxima_contents)
+        inp = os.path.join(d, "in.tsv")
+        pd.DataFrame({"cloneId": [0, 1], "readCount": [100, 200]}).to_csv(inp, sep="\t", index=False)
+        with pytest.raises(SystemExit) as failure:
+            quantify_templates(maxima, inp, os.path.join(d, "out.tsv"))
+        assert failure.value.code not in (0, None)
