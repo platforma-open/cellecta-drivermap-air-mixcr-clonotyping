@@ -25,10 +25,17 @@ self.body(func(inputs) {
 	inputFile := inputs.__value__
 
 	// "NA" -> null, then cast to the column's value type.
+	// Integer columns go through Double first: MiXCR writes readCount as a Double
+	// ("148.0"), and ptabler's non-strict String->Long cast turns that into null,
+	// which the per-clonotypeKey sum below would then report as 0.
 	naCast := func(col, typ) {
+		value := pt.col(col)
+		if typ == "Long" || typ == "Int" {
+			value = value.cast("Double")
+		}
 		return pt.when(pt.col(col).matchesEcmaRegex("^NA$")).
 			then(pt.lit(undefined).cast(typ)).
-			otherwise(pt.col(col).cast(typ)).
+			otherwise(value.cast(typ)).
 			alias(col)
 	}
 
