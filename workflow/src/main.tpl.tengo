@@ -60,6 +60,8 @@ wf.body(func(args) {
 			// "Export raw results".
 			mixcrTables: runMixcr.output("mixcrTables"),
 			vbcTables: runMixcr.output("vbcTables"),
+			// [chain] -> [sampleId] -> the VBC filter and normalize log streams.
+			vbcLogs: runMixcr.output("vbcLogs"),
 
 			qcReportTable: pframes.exportFrame(runMixcr.output("qcReportTable"))
 		},

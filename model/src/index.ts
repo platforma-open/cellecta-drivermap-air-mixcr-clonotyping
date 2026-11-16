@@ -127,6 +127,35 @@ function parseSampleLogs<T>(
   return { isComplete, data };
 }
 
+/** Reads the `vbcLogs` output, [chain] -> [sampleId] -> the VBC filter and normalize streams
+ * keyed by step, as entries keyed [sampleId, chain, step]. A chain whose map failed is skipped. */
+function parseVbcLogs<T>(
+  acc: TreeNodeAccessor | undefined,
+  parse: (acc: TreeNodeAccessor) => T | undefined,
+): PColumnResourceMapData<NonNullable<T>> | undefined {
+  if (acc === undefined) return undefined;
+  const data: { key: PColumnKey; value: NonNullable<T> }[] = [];
+  let isComplete = acc.getInputsLocked();
+  for (const chainKey of acc.listInputFields()) {
+    const chainAcc = resolveOrError(acc, chainKey);
+    if (chainAcc === "error") continue;
+    if (chainAcc === undefined) {
+      isComplete = false;
+      continue;
+    }
+    const logs = parseSampleLogs(chainAcc, parse);
+    if (logs === undefined) {
+      isComplete = false;
+      continue;
+    }
+    isComplete &&= logs.isComplete;
+    const [chain] = JSON.parse(chainKey) as PColumnKey;
+    for (const { key, value } of logs.data)
+      data.push({ key: [key[0], chain, ...key.slice(1)], value });
+  }
+  return { isComplete, data };
+}
+
 export const platforma = BlockModelV3.create({ dataModel, kind })
 
   // Inverse of `init` — the same fields, projected back out for template export. `tableState`
@@ -203,6 +232,19 @@ export const platforma = BlockModelV3.create({ dataModel, kind })
   // Keyed [sampleId, step].
   .output("logs", (ctx) =>
     parseSampleLogs(ctx.outputs?.resolve("logs"), (acc) => acc.getLogHandle()),
+  )
+
+  // Keyed [sampleId, chain, step]: the VBC filter and normalize streams, shown after MiXCR's.
+  // A run from a build before this output has no `vbcLogs` field; that reads as no logs.
+  .output("vbcLogs", (ctx) =>
+    parseVbcLogs(
+      ctx.outputs?.resolve({
+        field: "vbcLogs",
+        assertFieldType: "Input",
+        allowPermanentAbsence: true,
+      }),
+      (acc) => acc.getLogHandle(),
+    ),
   )
 
   .output("progress", (ctx) =>

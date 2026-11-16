@@ -38,6 +38,33 @@ function logsPerSample(entries: Entries<AnyLogHandle> | undefined): Map<string, 
   return out;
 }
 
+/** `TCRBeta` -> `TCR Beta`, `IGHeavy` -> `IG Heavy`. */
+function chainLabel(chain: string): string {
+  return chain.replace(/^(TCR|IG)(?=[A-Z])/, "$1 ");
+}
+
+/** Each sample's VBC filter and normalize logs, per chain. The workflow keys each step by its
+ * run position (`1:filter`), so sorting by chain, then step, gives the run order. */
+function vbcLogsPerSample(entries: Entries<AnyLogHandle> | undefined): Map<string, StepLog[]> {
+  const out = new Map<string, StepLog[]>();
+  const keyOf = (e: { key: unknown[] }) => `${String(e.key[1])}:${String(e.key[2])}`;
+  const ordered = [...(entries ?? [])].sort((a, b) => keyOf(a).localeCompare(keyOf(b)));
+  for (const e of ordered) {
+    if (e.value === undefined) continue;
+    const sampleId = e.key[0] as string;
+    const chain = String(e.key[1]);
+    const step = String(e.key[2]);
+    const logs = out.get(sampleId) ?? [];
+    logs.push({
+      key: `vbc:${chain}:${step}`,
+      label: `VBC ${step.slice(step.indexOf(":") + 1)} · ${chainLabel(chain)}`,
+      handle: e.value,
+    });
+    out.set(sampleId, logs);
+  }
+  return out;
+}
+
 /** The value of the furthest step that has one, for each sample. */
 function furthestStep<T>(entries: Entries<T> | undefined): Map<string, T> {
   const best = new Map<string, { step: string; value: T }>();
@@ -57,6 +84,9 @@ export type Result = {
   sampleId: string;
   progress: string;
   logs: StepLog[];
+  /** The VBC filter and normalize logs, per chain. Kept apart from `logs`, which also drives
+   * progress and the step list of the resource settings. */
+  vbcLogs: StepLog[];
   alignReport?: AlignReport;
   assembleReport?: AssembleReport;
   qc?: Qc;
@@ -83,12 +113,18 @@ export const resultMap = computed(() => {
       label: sampleLabels[sampleId],
       progress: blockRunning ? "Queued" : "Not started",
       logs: [],
+      vbcLogs: [],
     });
   }
 
   for (const [sampleId, logs] of logsPerSample(app.model.outputs.logs?.data)) {
     const r = resultMap.get(sampleId);
     if (r) r.logs = logs;
+  }
+
+  for (const [sampleId, logs] of vbcLogsPerSample(app.model.outputs.vbcLogs?.data)) {
+    const r = resultMap.get(sampleId);
+    if (r) r.vbcLogs = logs;
   }
 
   // The qc result is the last thing MiXCR writes for a sample.

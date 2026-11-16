@@ -296,6 +296,8 @@ self.body(func(inputs) {
 	// `mixcr exportClones` tables and its VBC tables. Exported, so the client can download them.
 	mixcrTablesBuilder := pcolumn.resourceMapBuilder(1)
 	vbcTablesBuilder := pcolumn.resourceMapBuilder(1)
+	// [chain] -> [sampleId] -> the VBC filter and normalize streams, for the per-sample log view.
+	vbcLogsBuilder := pcolumn.resourceMapBuilder(1)
 
 	for chain in chains {
 		chainInfo := chainInfos[chain]
@@ -356,6 +358,20 @@ self.body(func(inputs) {
 			},
 			name: "cloneTableTsv",
 			path: ["tsv"]
+		}, {
+			/////////////////////// Logs ///////////////////////
+			// Per sample: the VBC filter and normalize streams, keyed by step (`1:filter`).
+			type: "Resource",
+			spec: {
+				kind: "PColumn",
+				name: "pl7.app/log",
+				domain: {
+					"pl7.app/vdj/clonotypingRunId": blockId
+				},
+				valueType: "Log"
+			},
+			name: "logs",
+			path: ["logs"]
 		} ]
 
 		mixcrTablesBuilder.add([chain], pframes.exportColumnData(exportResults.outputData("cloneTableTsv")))
@@ -375,6 +391,7 @@ self.body(func(inputs) {
 		// failed VBC step per sample.
 		vbcStatusBuilder.add([chain], vbcProcessingResults.outputData("cloneTableTsv"))
 		vbcTablesBuilder.add([chain], pframes.exportColumnData(vbcProcessingResults.outputData("cloneTableTsv")))
+		vbcLogsBuilder.add([chain], vbcProcessingResults.outputData("logs"))
 
 		// Abundance p-frame: collapse the per-clone table to one row per clonotypeKey (sum
 		// abundance) so the import sees a unique clonotypeKey axis. Per sample (no aggregation).
@@ -460,6 +477,7 @@ self.body(func(inputs) {
 		"vbcStatus": vbcStatusBuilder.build(),
 		"mixcrTables": mixcrTablesBuilder.build(),
 		"vbcTables": vbcTablesBuilder.build(),
+		"vbcLogs": vbcLogsBuilder.build(),
 		"qcReportTable": qcReportTable.output("qcReportTable")
 	}
 })

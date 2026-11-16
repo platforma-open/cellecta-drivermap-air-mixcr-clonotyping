@@ -3,8 +3,9 @@
 self := import("@platforma-sdk/workflow-tengo:tpl.light")
 assets := import("@platforma-sdk/workflow-tengo:assets")
 exec := import("@platforma-sdk/workflow-tengo:exec")
+pcolumn := import("@platforma-sdk/workflow-tengo:pframes.pcolumn")
 
-self.defineOutputs(["tsv"])
+self.defineOutputs(["tsv", "logs"])
 
 vbcFilterSw := assets.importSoftware("@platforma-open/cellecta.drivermap-mixcr-clonotyping.vbc-filtering:main")
 vbcNormalizationSw := assets.importSoftware("@platforma-open/cellecta.drivermap-mixcr-clonotyping.vbc-normalization:main")
@@ -28,6 +29,7 @@ self.body(func(inputs) {
 		inMediumQueue().
 		resources(_resources()).
 		printErrStreamToStdout().
+		saveStdoutStream().
 		software(vbcFilterSw).
 		arg("input.tsv").
 		arg("output").
@@ -41,6 +43,7 @@ self.body(func(inputs) {
 		inMediumQueue().
 		resources(_resources()).
 		printErrStreamToStdout().
+		saveStdoutStream().
 		software(vbcNormalizationSw).
 		arg("input.kde.maximas.txt").
 		arg("input.tsv").
@@ -50,7 +53,15 @@ self.body(func(inputs) {
 		saveFile("output.tsv").
 		run()
 
+	// The two commands' streams, keyed by run position and step (`1:filter`), the same shape as
+	// the MiXCR step logs. filter.py prints its threshold and normalization-reliability warnings
+	// here; nothing else surfaces them.
+	logs := pcolumn.resourceMapBuilder( /* keyLength */ 1 )
+	logs.add(["1:filter"], filterCmd.getStdoutStream())
+	logs.add(["2:normalize"], normalizeCmd.getStdoutStream())
+
 	return {
-		tsv: normalizeCmd.getFile("output.tsv")
+		tsv: normalizeCmd.getFile("output.tsv"),
+		logs: logs.build()
 	}
 })
