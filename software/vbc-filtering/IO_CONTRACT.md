@@ -25,8 +25,7 @@ Sources (all in `workflow/src/`):
 
 The molecule (VBC) tag column is **`tagValueMIVBC`**. Evidence:
 - `mixcr-export.tpl.tengo:46` passes `-tags Molecule`; MiXCR names the value column from the kit's `MIVBC` molecule-tag pattern.
-- The current `filter.py` reads `df.groupby('cloneId')['tagValueMIVBC'].nunique()` (`filter.py:147`) and drops it (`filter.py:193`) — and a live run reaches the KDE call past that access without a `KeyError`.
-- The stale `// ... MIBC tags` comment at `mixcr-export.tpl.tengo:44` is the only `MIBC` mention and is cosmetic (Task 4 fixes it).
+- `filter.py` counts the distinct `tagValueMIVBC` values per clone and then drops the column (`collapse_to_one_row_per_clone`) — and a live run reaches the KDE call past that access without a `KeyError`.
 
 When porting from upstream `main`, rename every upstream `tagValueMIBC` → `tagValueMIVBC`.
 
@@ -85,7 +84,7 @@ Carried through from input by `filter.py` (one row per surviving `cloneId`):
 (No mutation columns for this preset — `coreGeneFeatures` is empty. `aaSeqCDR3` backs
 two specs, `aa-seq-cdr3` and `clonotype-label`, but it is one column.)
 
-## Schema-preservation rule for the port (Task 2 Step 5)
+## Schema-preservation rule for the port
 
 Upstream `main`'s `simplify_clonotypes_table` emits a `readCount_BC1..8` pivot and drops
 `readFraction`. **Do not** substitute that pivot for the contract columns. The ported
@@ -95,5 +94,5 @@ a **recomputed** `readFraction`. `tagValueMIVBC` is dropped after computing `bar
 
 ## Empty / degenerate handling
 - Empty input → write a valid empty `output.tsv` carrying the expected headers + empty maximas file.
-- QC-fail → passthrough (input copied out unfiltered) + empty maximas file.
-- `normalize.py`: missing/empty/`nan` normFactor → `templateEstimate = templateEstimateFraction = "NA"`, output still carries both columns.
+- QC-fail → no read filtering, but still collapsed to one row per clone (`tagValueMIVBC` dropped, `readFraction` recomputed) + empty maximas file.
+- `normalize.py`: missing/empty maximas file or `nan` normFactor → `templateEstimate = templateEstimateFraction = "NA"`, output still carries both columns. A maximas file that is neither empty nor well formed fails the step.

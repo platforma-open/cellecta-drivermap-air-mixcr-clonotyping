@@ -11,8 +11,8 @@ deterministic — regenerate any time with `python3 generate.py` (pure stdlib, s
 Synthetic "exported clones" TSVs in the format the VBC scripts consume. Each row is one
 `(cloneId, validator-barcode)` observation with a `readCount`. `tagValueMIBC` is one of the
 8 fixed DriverMap validator barcodes `BC1..BC8`; a clone's **VBC count** = how many distinct
-BCs it was seen with (1..8). `tagValueMIVBC` is included as a copy so the *current* block
-script (which still uses the buggy `MIVBC` name) also runs.
+BCs it was seen with (1..8). `tagValueMIVBC` is included as a copy: it is the name the kit's
+MiXCR export gives the column, and the one the block's script reads.
 
 Columns: `cloneId, tagValueMIBC, tagValueMIVBC, readCount, readFraction, targetSequences,
 nSeqCDR3, aaSeqCDR3, bestVGene, bestJGene, bestCGene, isotypePrimary, topChains, clonotypeKey`.
@@ -27,7 +27,7 @@ in `clones_main` are barcode-hopping (one dominant BC + sub-5% BCs).
 | File | Targets |
 |---|---|
 | `clones_main.tsv` (1980 clones, 8760 rows) | QC pass; bins 1–8 each well-populated & bimodal; barcode hopping; bin-2 tri-modal; full filter→normalize path |
-| `clones_tiny.tsv` (64 clones, 160 rows) | QC fail (<1000 rows) → passthrough, no filtering |
+| `clones_tiny.tsv` (64 clones, 160 rows) | QC fail (<1000 rows) → no filtering: upstream passes the rows through, the port collapses them to one row per clone |
 | `clones_empty.tsv` (header only) | empty-input handling |
 | `clones_unreliable_vbc1.tsv` (bin 1 = 5 clones) | VBC=1 normalization unreliable → fallback to VBC=2 (`right_maxes[1] = right_maxes[2]/2`) |
 | `clones_no_norm.tsv` (bins 1,2,3 sparse) | VBC 1/2/3 all unreliable → normFactor = NaN → `templateEstimate = "NA"` |
@@ -73,16 +73,15 @@ uv pip install --python .venv pandas==2.2.3 numpy==2.2.6 scikit-learn==1.6.1 sci
 `reference/filter_main.py` / `normalize_main.py` are verbatim copies of
 `kitt-cellecta/AIR_VBC_filtering@main` `1_vbc_filtering/filter.py` / `2_quantify/normalize.py`.
 
-## Use for the item-2 port (the parked plan)
+## Use for the port
 
-This is the golden-test bed for `.meta/plans/2026-06-22-vbc-scripts-upstream-alignment.md`:
-when the block's `filter.py`/`normalize.py` are ported, diff their output against
-`reference/*_main.py` on these fixtures (Tasks 1–3). It validates the **algorithm** port and
-the ours-vs-main equivalence.
+This is the golden-test bed for the block's port of `filter.py`/`normalize.py`: the tests diff
+their output against `reference/*_main.py` on these fixtures. It validates the **algorithm**
+port and the ours-vs-main equivalence.
 
 **Caveat — still want one real exported TSV.** This data's *schema* (column names,
 `tagValueMIBC`, the `BC1..8` design) is reconstructed from reading the upstream + block code,
-not from a real `mixcr export`. A single real exported clones TSV (Task 0) is still needed to
+not from a real `mixcr export`. A single real exported clones TSV is still needed to
 confirm the column names match reality and to validate the downstream block schema. Notably,
 upstream main's filtered output here is `cloneId, readCount_BC1..BC8, readCount, <metadata>` —
 the `simplify_clonotypes_table` pivot, **with no `readFraction`** — which is exactly the
