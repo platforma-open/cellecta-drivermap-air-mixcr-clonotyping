@@ -51,7 +51,7 @@
       "support": "mailto:support@milaboratories.com",
       "description": "Clonotyping analysis of TCR and BCR data generated with Cellecta DriverMap™ AIR TCR-BCR Profiling Kit v2.",
       "longDescription": "file:../docs/description.md",
-      "changelog": "file:./CHANGELOG.md",
+      "changelog": "file:CHANGELOG.md",
       "tags": [
         "airr",
         "vdj",

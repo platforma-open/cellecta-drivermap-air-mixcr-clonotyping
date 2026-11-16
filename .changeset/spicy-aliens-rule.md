@@ -62,3 +62,5 @@ MILAB-6335: bring the Cellecta DriverMap AIR + MiXCR clonotyping block up to dat
 - Python Tests CI: ruff gate and the whole pytest suite, golden comparisons against upstream included.
 
 Existing projects re-run every sample on update.
+
+Software docker images are pushed re-layered by package (PL_DOCKER_RELAYER=chunkah): a one-package update uploads and pulls about one package instead of the whole image.
