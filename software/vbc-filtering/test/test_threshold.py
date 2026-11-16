@@ -62,17 +62,24 @@ def _forced_extrema(maxima_idx, minima_idx):
     return fake
 
 
-def test_one_maximum_no_valley_reports_nan_threshold_density(monkeypatch):
-    """Deliberate divergence from upstream main: one maximum and no minimum below it falls back
-    to default_low_thresh, and the threshold density is NaN. Upstream reports
-    exp(log_dens[default_low_thresh]) there — the density at grid index 2, which is not the
-    density at the threshold."""
+def test_one_maximum_no_valley_reports_upstream_threshold_density(monkeypatch):
+    """One maximum and no minimum below it: default threshold, and the threshold density
+    upstream reports — finite, so the reliability check does not NaN-gate the bin."""
     monkeypatch.setattr("filter.argrelextrema", _forced_extrema([500], []))
     result = find_kde_mimima_threshold(pd.Series(range(1, 300), dtype="int64"), DEFAULT_LOW_THRESH)
     assert len(result) == 6
     assert result[0] == DEFAULT_LOW_THRESH
-    assert math.isnan(result[3])
-    assert not math.isnan(result[4]) and not math.isnan(result[5])
+    assert all(math.isfinite(v) and v > 0 for v in result[3:])
+
+
+def test_single_peak_bin_keeps_a_finite_threshold_density():
+    """A single-peak bin takes the one-maximum path with no patching: the KDE grid edge is never
+    a minimum. Its threshold density must stay finite, or the bin loses its normalization."""
+    rng = np.random.default_rng(7)
+    reads = pd.Series(np.round(rng.lognormal(np.log(150), 0.3, 150)).astype("int64"))
+    result = find_kde_mimima_threshold(reads, DEFAULT_LOW_THRESH)
+    assert result[0] == DEFAULT_LOW_THRESH
+    assert math.isfinite(result[3]) and result[3] > 0
 
 
 def test_two_maxima_no_valley_falls_back(monkeypatch):

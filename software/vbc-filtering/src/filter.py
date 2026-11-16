@@ -108,11 +108,12 @@ def find_kde_mimima_threshold(data, default_low_thresh, min_valley_depth=0.10):
         (threshold cutoff, left peak max, right peak max,
          threshold cutoff KDE value, left peak max KDE value, right peak max KDE value)
     Degenerate bins (<10 points, zero/NaN bandwidth, no maxima) fall back to
-    `default_low_thresh` — the function never returns None. On the degenerate and empty-valley
-    fall-back paths the threshold is `default_low_thresh`, not a detected minimum, so its KDE
-    value is `nan`; the reliability check (`is_normalization_unreliable`) NaN-gates such a bin
-    as unreliable. A too-shallow valley reports upstream's value, the density at grid index
-    `default_low_thresh`, so the reliability check treats the bin as upstream does.
+    `default_low_thresh` — the function never returns None. On the degenerate paths, and where
+    two or more peaks have no minimum between them, the threshold is `default_low_thresh`, not
+    a detected minimum, so its KDE value is `nan`; the reliability check
+    (`is_normalization_unreliable`) NaN-gates such a bin as unreliable. A single peak and a
+    too-shallow valley report upstream's value, the density at grid index `default_low_thresh`,
+    so the reliability check treats the bin as upstream does.
     """
     if len(data) < 10:
         return (default_low_thresh, float("nan"), float("nan"), float("nan"), float("nan"), float("nan"))
@@ -147,8 +148,10 @@ def find_kde_mimima_threshold(data, default_low_thresh, min_valley_depth=0.10):
             selected_min = between_minima[np.argmin(log_dens[between_minima])]
             thr_loc, thr_dens = _kde_point(selected_min, x, log_dens)
             return (thr_loc, left_loc, right_loc, thr_dens, left_dens, right_dens)
-        # unlikely (a maximum implies a low point) -> fall back to default
-        return (default_low_thresh, left_loc, right_loc, float("nan"), left_dens, right_dens)
+        # A single peak has no minimum below it (the grid edge is never one): the threshold
+        # falls back to default, with upstream's KDE value at grid index `default_low_thresh`.
+        thr_dens = np.exp(log_dens[default_low_thresh])
+        return (default_low_thresh, left_loc, right_loc, thr_dens, left_dens, right_dens)
 
     if len(maxima) == 2:
         sorted_maxima = maxima[np.argsort(-log_dens[maxima])]
