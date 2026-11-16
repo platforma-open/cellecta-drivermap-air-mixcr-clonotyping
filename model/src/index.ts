@@ -8,6 +8,8 @@ import {
   BlockModelV3,
   ColumnsCollection,
   DataModelBuilder,
+  RT_RESOURCE_MAP,
+  RT_RESOURCE_MAP_PARTITIONED,
   TreeNodeAccessor,
   createPlDataTableStateV2,
   createPlDataTableV3,
@@ -81,6 +83,15 @@ function resolveOrError(
   }
 }
 
+/** Resolves a workflow output that a run made before the MiXCR step split does not have. Such a
+ * run's outputs are locked without the field, which reads as undefined here, not as an error. */
+function resolveSinceSplit(
+  outputs: TreeNodeAccessor | undefined,
+  field: string,
+): TreeNodeAccessor | undefined {
+  return outputs?.resolve({ field, assertFieldType: "Input", allowPermanentAbsence: true });
+}
+
 /** The per-sample tables of a [chain] -> [sampleId] -> file map, or undefined until every
  * entry has settled. A sample whose step failed has no table and is left out. */
 function sampleTables(byChain: TreeNodeAccessor | undefined, stage: "mixcr" | "vbc") {
@@ -105,7 +116,52 @@ function sampleTables(byChain: TreeNodeAccessor | undefined, stage: "mixcr" | "v
   return tables;
 }
 
-/** Reads the per-sample `logs` column: a map of streams keyed by MiXCR step, keyed [sampleId, step]. */
+/** Walks a resource map into `data`. An entry whose field or resource failed is left out, so
+ * one failed sample does not take the other samples' entries with it. Returns whether every
+ * remaining entry has its value. */
+function collectSettled<T>(
+  acc: TreeNodeAccessor,
+  parse: (acc: TreeNodeAccessor) => T | undefined,
+  data: { key: PColumnKey; value: NonNullable<T> }[],
+  keyPrefix: PColumnKey,
+): boolean {
+  const type = acc.resourceType.name;
+  if (type !== RT_RESOURCE_MAP && type !== RT_RESOURCE_MAP_PARTITIONED)
+    throw new Error(`Unknown resource type: ${type}`);
+  let isComplete = acc.getInputsLocked();
+  for (const keyStr of acc.listInputFields()) {
+    const value = resolveOrError(acc, keyStr);
+    if (value === "error") continue;
+    if (value === undefined) {
+      isComplete = false;
+      continue;
+    }
+    const key = [...keyPrefix, ...(JSON.parse(keyStr) as PColumnKey)];
+    if (type === RT_RESOURCE_MAP_PARTITIONED) {
+      isComplete = collectSettled(value, parse, data, key) && isComplete;
+      continue;
+    }
+    const parsed = parse(value);
+    if (parsed === undefined || parsed === null) isComplete = false;
+    else data.push({ key, value: parsed });
+  }
+  return isComplete;
+}
+
+/** `parseResourceMap` that leaves out the entries of a failed sample instead of throwing. */
+function parseSettledMap<T>(
+  acc: TreeNodeAccessor | undefined,
+  parse: (acc: TreeNodeAccessor) => T | undefined,
+): PColumnResourceMapData<NonNullable<T>> | undefined {
+  if (acc === undefined) return undefined;
+  const data: { key: PColumnKey; value: NonNullable<T> }[] = [];
+  const isComplete = collectSettled(acc, parse, data, []);
+  return { isComplete, data };
+}
+
+/** Reads the per-sample `logs` column: a map of streams keyed by MiXCR step, keyed [sampleId, step].
+ * A failed sample is left out. So is the single stream per sample of a run made before MiXCR
+ * ran as one job per step: it has no step to list under. */
 function parseSampleLogs<T>(
   acc: TreeNodeAccessor | undefined,
   parse: (acc: TreeNodeAccessor) => T | undefined,
@@ -114,15 +170,16 @@ function parseSampleLogs<T>(
   const data: { key: PColumnKey; value: NonNullable<T> }[] = [];
   let isComplete = acc.getInputsLocked();
   for (const sampleKey of acc.listInputFields()) {
-    const sample = acc.resolve({ field: sampleKey, assertFieldType: "Input" });
+    const sample = resolveOrError(acc, sampleKey);
+    if (sample === "error") continue;
     if (sample === undefined) {
       isComplete = false;
       continue;
     }
     const key = JSON.parse(sampleKey) as PColumnKey;
-    const steps = parseResourceMap(sample, parse, false);
-    isComplete &&= steps.isComplete;
-    for (const step of steps.data) data.push({ key: [...key, ...step.key], value: step.value });
+    const type = sample.resourceType.name;
+    if (type !== RT_RESOURCE_MAP && type !== RT_RESOURCE_MAP_PARTITIONED) continue;
+    isComplete = collectSettled(sample, parse, data, key) && isComplete;
   }
   return { isComplete, data };
 }
@@ -251,12 +308,10 @@ export const platforma = BlockModelV3.create({ dataModel, kind })
     parseSampleLogs(ctx.outputs?.resolve("logs"), (acc) => acc.getProgressLog(ProgressPrefix)),
   )
 
-  .output("qc", (ctx) =>
-    parseResourceMap(ctx.outputs?.resolve("qc"), (acc) => acc.getFileHandle(), true),
-  )
+  .output("qc", (ctx) => parseSettledMap(ctx.outputs?.resolve("qc"), (acc) => acc.getFileHandle()))
 
   .output("reports", (ctx) =>
-    parseResourceMap(ctx.outputs?.resolve("reports"), (acc) => acc.getFileHandle(), false),
+    parseSettledMap(ctx.outputs?.resolve("reports"), (acc) => acc.getFileHandle()),
   )
 
   .output("isRunning", (ctx) => ctx.outputs?.getIsReadyOrError() === false)
@@ -290,7 +345,7 @@ export const platforma = BlockModelV3.create({ dataModel, kind })
 
     // Channel 2: a per-sample VBC step error inside the nested `vbcStatus` map. Resolving a
     // field that holds an error throws, and a throw here is the failure this output reports.
-    const vbc = outputs.resolve("vbcStatus");
+    const vbc = resolveSinceSplit(outputs, "vbcStatus");
     if (vbc !== undefined) {
       const byChain = parseResourceMap(
         vbc,
@@ -315,7 +370,7 @@ export const platforma = BlockModelV3.create({ dataModel, kind })
   // The samples whose VBC step failed, so the UI marks those and not every sample as failed.
   // `vbcStatus` is [chain] -> [sampleId] -> the step's table.
   .output("vbcFailedSamples", (ctx): string[] | undefined => {
-    const vbc = ctx.outputs?.resolve("vbcStatus");
+    const vbc = resolveSinceSplit(ctx.outputs, "vbcStatus");
     if (vbc === undefined) return undefined;
     const failed = new Set<string>();
     for (const chainKey of vbc.listInputFields()) {
@@ -331,8 +386,8 @@ export const platforma = BlockModelV3.create({ dataModel, kind })
   // Every sample's raw `mixcr exportClones` table and its VBC-filtered table, per chain, for
   // "Export raw results". Undefined until the run has settled.
   .output("rawTables", (ctx) => {
-    const mixcr = sampleTables(ctx.outputs?.resolve("mixcrTables"), "mixcr");
-    const vbc = sampleTables(ctx.outputs?.resolve("vbcTables"), "vbc");
+    const mixcr = sampleTables(resolveSinceSplit(ctx.outputs, "mixcrTables"), "mixcr");
+    const vbc = sampleTables(resolveSinceSplit(ctx.outputs, "vbcTables"), "vbc");
     return mixcr === undefined || vbc === undefined ? undefined : [...mixcr, ...vbc];
   })
 
