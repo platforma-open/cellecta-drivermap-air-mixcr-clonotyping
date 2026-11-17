@@ -1,0 +1,28 @@
+test := import("@platforma-sdk/workflow-tengo:test")
+pt := import(":preset-traits")
+text := import("text")
+
+TestSplitsBySample := func() {
+	miltenyi := { pipeline: ["align", "refineTagsAndSort", "assemble"],
+		align: { splitBySample: true, tagPattern: "^N{0:12}tggtatcaacgcagagt(SMPL:N{5})(UMI:N{14})N{21}(R1:)\\^N{20}(R2:)" } }
+	test.isTrue(pt.splitsBySample(miltenyi))
+	// splitBySample off, or no sample tag: no split.
+	test.isFalse(pt.splitsBySample({ align: { splitBySample: false, tagPattern: "^(SMPL:N{5})(R1:*)" } }))
+	test.isFalse(pt.splitsBySample({ align: { splitBySample: true, tagPattern: "^(R1F:N{0:2}(C:ggg)(R1:*))\\^(R2F:(UMI:NNNN)(R2:*))" } }))
+	test.isFalse(pt.splitsBySample({}))
+	test.isFalse(pt.splitsBySample(undefined))
+}
+
+TestHasQcChecks := func() {
+	test.isTrue(pt.hasQcChecks({ qc: { checks: [{}] } }))
+	test.isFalse(pt.hasQcChecks({ qc: { checks: [] } }))
+	test.isFalse(pt.hasQcChecks({}))
+}
+
+TestUnsupportedReason := func() {
+	test.isTrue(is_undefined(pt.unsupportedReason({ align: { tagPattern: "^(R1:*)\\^(R2:*)" }, qc: { checks: [{}] } })))
+	split := { align: { splitBySample: true, tagPattern: "^(SMPL:N{5})(R1:*)" }, qc: { checks: [{}] } }
+	test.isTrue(text.contains(pt.unsupportedReason(split), "sample tag"))
+	test.isTrue(text.contains(pt.unsupportedReason({ align: {}, qc: { checks: [] } }), "qc checks"))
+}
+

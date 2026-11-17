@@ -1,4 +1,4 @@
-# @platforma-open/milaboratories.mixcr-clonotyping-2.hash-column
+# @platforma-open/cellecta.drivermap-mixcr-clonotyping.hash-column
 
 ## 2.0.1
 
